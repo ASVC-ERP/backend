@@ -27,9 +27,6 @@ let ItemsController = class ItemsController {
     findAll() {
         return this.itemsService.findAll();
     }
-    getOneTask(id) {
-        return this.itemsService.findOne(+id);
-    }
 };
 exports.ItemsController = ItemsController;
 __decorate([
@@ -45,13 +42,6 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
 ], ItemsController.prototype, "findAll", null);
-__decorate([
-    (0, common_1.Get)(':id'),
-    __param(0, (0, common_1.Param)('id')),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
-    __metadata("design:returntype", void 0)
-], ItemsController.prototype, "getOneTask", null);
 exports.ItemsController = ItemsController = __decorate([
     (0, common_1.Controller)('items'),
     __metadata("design:paramtypes", [items_service_1.ItemsService])

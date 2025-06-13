@@ -3,7 +3,17 @@ import { CreateItemDto } from './dto/create-item.dto';
 export declare class ItemsController {
     private readonly itemsService;
     constructor(itemsService: ItemsService);
-    create(dto: CreateItemDto): import("./items.service").Items;
-    findAll(): import("./items.service").Items[];
-    getOneTask(id: string): import("./items.service").Items | undefined;
+    create(dto: CreateItemDto): Promise<import("./items.service").Items>;
+    findAll(): Promise<{
+        id: number;
+        itemCode: any;
+        itemName: any;
+        brand: any;
+        origin: any;
+        stock: number;
+        price1: number;
+        price2: number;
+        price3: number;
+        price4: number;
+    }[]>;
 }

@@ -16,10 +16,4 @@ export class ItemsController {
   findAll() {
     return this.itemsService.findAll();
   }
-
-  //Get Specific Inventory via ID
-  @Get(':id')
-  getOneTask(@Param('id') id: string) {
-    return this.itemsService.findOne(+id);  // `+id` converts string to number
-  }
 }

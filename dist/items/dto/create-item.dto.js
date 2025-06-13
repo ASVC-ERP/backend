@@ -7,9 +7,10 @@ class CreateItemDto {
     brand;
     origin;
     stock;
-    originalPrice;
-    netAPrice;
-    netBPrice;
+    price1;
+    price2;
+    price3;
+    price4;
 }
 exports.CreateItemDto = CreateItemDto;
 //# sourceMappingURL=create-item.dto.js.map

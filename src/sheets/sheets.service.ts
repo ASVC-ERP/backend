@@ -25,6 +25,8 @@ export class SheetsService implements OnModuleInit {
       spreadsheetId,
       range,
     });
+
+    console.log('🔍 Google Sheets fetched data:', res.data.values);
     return res.data.values || [];
   }
 

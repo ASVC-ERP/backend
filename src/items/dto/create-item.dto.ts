@@ -4,7 +4,8 @@ export class CreateItemDto {
   brand: string;
   origin: string;
   stock: number;
-  originalPrice: number;
-  netAPrice: number;
-  netBPrice: number;
+  price1: number;
+  price2: number;
+  price3: number;
+  price4: number;
 }

@@ -15,27 +15,27 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.SheetsController = void 0;
 const common_1 = require("@nestjs/common");
 const sheets_service_1 = require("./sheets.service");
-const SPREADSHEET_ID = '1868A0REbI30r4r_wmBKcD4YI0UhrB2CjS8FJ8jplWAI';
-const RANGE = 'Sheet1!A2:H';
 let SheetsController = class SheetsController {
     sheetsService;
     constructor(sheetsService) {
         this.sheetsService = sheetsService;
     }
-    async getData() {
-        return await this.sheetsService.getData(SPREADSHEET_ID, RANGE);
+    async getData(spreadsheetId, range) {
+        return await this.sheetsService.getData(spreadsheetId, range);
     }
     async addData(body) {
-        const row = [[body.name, body.quantity, body.price, new Date().toISOString()]];
-        await this.sheetsService.appendData(SPREADSHEET_ID, RANGE, row);
+        const { spreadsheetId, range, values } = body;
+        await this.sheetsService.appendData(spreadsheetId, range, values);
         return { message: 'Row added' };
     }
 };
 exports.SheetsController = SheetsController;
 __decorate([
     (0, common_1.Get)(),
+    __param(0, (0, common_1.Query)('spreadsheetId')),
+    __param(1, (0, common_1.Query)('range')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
+    __metadata("design:paramtypes", [String, String]),
     __metadata("design:returntype", Promise)
 ], SheetsController.prototype, "getData", null);
 __decorate([

@@ -28,6 +28,7 @@ let SheetsService = class SheetsService {
             spreadsheetId,
             range,
         });
+        console.log('🔍 Google Sheets fetched data:', res.data.values);
         return res.data.values || [];
     }
     async appendData(spreadsheetId, range, values) {
