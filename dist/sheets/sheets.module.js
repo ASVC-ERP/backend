@@ -6,16 +6,17 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.DatabaseModule = void 0;
+exports.SheetsModule = void 0;
 const common_1 = require("@nestjs/common");
-const mysql_service_1 = require("./mysql.service");
-let DatabaseModule = class DatabaseModule {
+const sheets_service_1 = require("./sheets.service");
+const sheets_controller_1 = require("./sheets.controller");
+let SheetsModule = class SheetsModule {
 };
-exports.DatabaseModule = DatabaseModule;
-exports.DatabaseModule = DatabaseModule = __decorate([
+exports.SheetsModule = SheetsModule;
+exports.SheetsModule = SheetsModule = __decorate([
     (0, common_1.Module)({
-        providers: [mysql_service_1.MySQLService],
-        exports: [mysql_service_1.MySQLService],
+        providers: [sheets_service_1.SheetsService],
+        controllers: [sheets_controller_1.SheetsController],
     })
-], DatabaseModule);
-//# sourceMappingURL=database.module.js.map
+], SheetsModule);
+//# sourceMappingURL=sheets.module.js.map
