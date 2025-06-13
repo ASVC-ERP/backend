@@ -42,20 +42,18 @@ let ItemsService = class ItemsService {
         return newItem;
     }
     async findAll() {
-        console.log('📦 findAll() hit');
         const data = await this.sheetsService.getData(this.spreadsheetId, this.range);
-        console.log('📄 Sheet data:', data);
         return data.map((row, index) => ({
             id: index + 1,
-            itemCode: row[0],
-            itemName: row[1],
-            brand: row[2],
-            origin: row[3],
-            stock: Number(row[4]),
-            price1: Number(row[5]),
-            price2: Number(row[6]),
-            price3: Number(row[7]),
-            price4: Number(row[8]),
+            itemCode: row[1],
+            itemName: row[2],
+            brand: row[3],
+            origin: row[4],
+            stock: Number(row[5]),
+            price1: Number(row[6]),
+            price2: Number(row[7]),
+            price3: Number(row[8]),
+            price4: Number(row[9]),
         }));
     }
 };
