@@ -20,7 +20,6 @@ export class SheetsService implements OnModuleInit {
       auth: authClient,
     });
   }
-
   async getData(spreadsheetId: string, range: string): Promise<any[]> {
     const res = await this.sheetsClient.spreadsheets.values.get({
       spreadsheetId,

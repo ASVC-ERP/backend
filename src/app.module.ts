@@ -5,16 +5,14 @@ import { AppService } from './app.service';
 import { SheetsModule } from './sheets/sheets.module';
 import { OrdersModule } from './orders/orders.module';
 import { ItemsModule } from './items/items.module';
+import { SuppliersModule } from './suppliers/suppliers.module';
 
 @Module({
   imports: [
-    
-    // Google Sheet Database Module,
-    SheetsModule,
-    
-    // Feature Modules
+    SheetsModule,       // Google Sheet Database Module
     OrdersModule, 
-    ItemsModule
+    ItemsModule,
+    SuppliersModule,    // Suppliers Module
   ],
   controllers: [AppController],
   providers: [AppService],

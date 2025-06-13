@@ -12,41 +12,46 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.SheetsController = void 0;
+exports.SuppliersController = void 0;
 const common_1 = require("@nestjs/common");
-const sheets_service_1 = require("./sheets.service");
-const SPREADSHEET_ID = '1868A0REbI30r4r_wmBKcD4YI0UhrB2CjS8FJ8jplWAI';
-const RANGE = 'Sheet1!A2:H';
-let SheetsController = class SheetsController {
+const sheets_service_1 = require("../sheets/sheets.service");
+let SuppliersController = class SuppliersController {
     sheetsService;
     constructor(sheetsService) {
         this.sheetsService = sheetsService;
     }
-    async getData() {
-        return await this.sheetsService.getData(SPREADSHEET_ID, RANGE);
+    spreadsheetId = '1868A0REbI30r4r_wmBKcD4YI0UhrB2CjS8FJ8jplWAI';
+    sheetName = 'Supplier List';
+    range = `${this.sheetName}!A2:B`;
+    async getSuppliers() {
+        const data = await this.sheetsService.getData(this.spreadsheetId, this.range);
+        return data.map(row => ({
+            name: row[0],
+            address: row[1],
+        }));
     }
-    async addData(body) {
-        const row = [[body.name, body.quantity, body.price, new Date().toISOString()]];
-        await this.sheetsService.appendData(SPREADSHEET_ID, RANGE, row);
-        return { message: 'Row added' };
+    async addSupplier(body) {
+        const { name, address } = body;
+        await this.sheetsService.appendData(this.spreadsheetId, this.range, [[name, address]]);
+        return { message: 'Supplier added successfully' };
     }
 };
-exports.SheetsController = SheetsController;
+exports.SuppliersController = SuppliersController;
 __decorate([
     (0, common_1.Get)(),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
-], SheetsController.prototype, "getData", null);
+], SuppliersController.prototype, "getSuppliers", null);
 __decorate([
     (0, common_1.Post)(),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
-], SheetsController.prototype, "addData", null);
-exports.SheetsController = SheetsController = __decorate([
-    (0, common_1.Controller)('sheets'),
+], SuppliersController.prototype, "addSupplier", null);
+exports.SuppliersController = SuppliersController = __decorate([
+    (0, common_1.Controller)('suppliers'),
     __metadata("design:paramtypes", [sheets_service_1.SheetsService])
-], SheetsController);
-//# sourceMappingURL=sheets.controller.js.map
+], SuppliersController);
+//# sourceMappingURL=suppliers.controller.js.map
