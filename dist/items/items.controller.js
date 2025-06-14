@@ -27,6 +27,16 @@ let ItemsController = class ItemsController {
     findAll() {
         return this.itemsService.findAll();
     }
+    async search(query) {
+        console.log('🔍 Received query:', query);
+        try {
+            return await this.itemsService.search(query);
+        }
+        catch (error) {
+            console.error('❌ Search failed:', error);
+            throw error;
+        }
+    }
 };
 exports.ItemsController = ItemsController;
 __decorate([
@@ -42,6 +52,13 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
 ], ItemsController.prototype, "findAll", null);
+__decorate([
+    (0, common_1.Get)('search'),
+    __param(0, (0, common_1.Query)('query')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], ItemsController.prototype, "search", null);
 exports.ItemsController = ItemsController = __decorate([
     (0, common_1.Controller)('items'),
     __metadata("design:paramtypes", [items_service_1.ItemsService])

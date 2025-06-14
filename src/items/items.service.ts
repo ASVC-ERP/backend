@@ -8,7 +8,7 @@ export type Items = CreateItemDto & { id: number };
 export class ItemsService {
   private spreadsheetId = '1868A0REbI30r4r_wmBKcD4YI0UhrB2CjS8FJ8jplWAI'; // Replace with your actual spreadsheet ID
   private sheetName = 'Inventory';
-  private range = `${this.sheetName}!A2:J`;
+  private range = `${this.sheetName}!A1:J`;
 
   constructor(private readonly sheetsService: SheetsService) {}
 
@@ -53,5 +53,19 @@ export class ItemsService {
       price3: Number(row[8]),
       price4: Number(row[9]),
     }));
+  }
+
+  async search(query: string) {
+    const data = await this.sheetsService.searchInventory(this.spreadsheetId, this.range);
+
+    console.log('🔍 Raw data from Sheets:', data);
+
+    for (const item of data) {
+      console.log('🔎 itemName:', item['itemName']);
+    }
+
+    return data.filter(item =>
+      (item['itemName'] || '').toLowerCase().includes(query.toLowerCase())
+    );
   }
 }

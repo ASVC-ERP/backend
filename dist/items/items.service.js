@@ -16,7 +16,7 @@ let ItemsService = class ItemsService {
     sheetsService;
     spreadsheetId = '1868A0REbI30r4r_wmBKcD4YI0UhrB2CjS8FJ8jplWAI';
     sheetName = 'Inventory';
-    range = `${this.sheetName}!A2:J`;
+    range = `${this.sheetName}!A1:J`;
     constructor(sheetsService) {
         this.sheetsService = sheetsService;
     }
@@ -55,6 +55,14 @@ let ItemsService = class ItemsService {
             price3: Number(row[8]),
             price4: Number(row[9]),
         }));
+    }
+    async search(query) {
+        const data = await this.sheetsService.searchInventory(this.spreadsheetId, this.range);
+        console.log('🔍 Raw data from Sheets:', data);
+        for (const item of data) {
+            console.log('🔎 itemName:', item['itemName']);
+        }
+        return data.filter(item => (item['itemName'] || '').toLowerCase().includes(query.toLowerCase()));
     }
 };
 exports.ItemsService = ItemsService;

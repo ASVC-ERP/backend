@@ -38,4 +38,22 @@ export class SheetsService implements OnModuleInit {
       requestBody: { values },
     });
   }
+
+  async searchInventory(spreadsheetId: string, range: string): Promise<any[]> {
+    const res = await this.sheetsClient.spreadsheets.values.get({
+      spreadsheetId,
+      range,
+    });
+
+    const rows = res.data.values || [];
+    const headers = rows[0];
+    const items = rows.slice(1).map(row =>
+      headers.reduce((acc, header, i) => {
+        acc[header] = row[i];
+        return acc;
+      }, {})
+    );
+
+    return items;
+  }
 }

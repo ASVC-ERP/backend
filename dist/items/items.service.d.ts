@@ -22,4 +22,5 @@ export declare class ItemsService {
         price3: number;
         price4: number;
     }[]>;
+    search(query: string): Promise<any[]>;
 }
