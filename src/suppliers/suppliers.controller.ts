@@ -8,7 +8,7 @@ export class SuppliersController {
 
   private spreadsheetId = '1868A0REbI30r4r_wmBKcD4YI0UhrB2CjS8FJ8jplWAI';
   private sheetName = 'Supplier List'; // must match the tab name in your Google Sheet
-  private range = `${this.sheetName}!A2:B`; // adjust if headers are in A1:B1
+  private range = `${this.sheetName}!B2:C`; // adjust if headers are in A1:B1
 
   @Get()
   async getSuppliers() {

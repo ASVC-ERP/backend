@@ -22,7 +22,7 @@ let SuppliersController = class SuppliersController {
     }
     spreadsheetId = '1868A0REbI30r4r_wmBKcD4YI0UhrB2CjS8FJ8jplWAI';
     sheetName = 'Supplier List';
-    range = `${this.sheetName}!A2:B`;
+    range = `${this.sheetName}!B2:C`;
     async getSuppliers() {
         const data = await this.sheetsService.getData(this.spreadsheetId, this.range);
         return data.map(([name, address]) => ({ name, address }));
