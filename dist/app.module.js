@@ -14,6 +14,7 @@ const sheets_module_1 = require("./sheets/sheets.module");
 const orders_module_1 = require("./orders/orders.module");
 const items_module_1 = require("./items/items.module");
 const suppliers_module_1 = require("./suppliers/suppliers.module");
+const auth_module_1 = require("./auth/auth.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -24,6 +25,7 @@ exports.AppModule = AppModule = __decorate([
             orders_module_1.OrdersModule,
             items_module_1.ItemsModule,
             suppliers_module_1.SuppliersModule,
+            auth_module_1.AuthModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [app_service_1.AppService],
