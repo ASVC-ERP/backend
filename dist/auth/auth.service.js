@@ -16,17 +16,22 @@ let AuthService = class AuthService {
     sheetsService;
     spreadsheetId = '1868A0REbI30r4r_wmBKcD4YI0UhrB2CjS8FJ8jplWAI';
     sheetName = 'Users';
-    range = `${this.sheetName}!A1:C`;
+    range = `${this.sheetName}!A1:E`;
     constructor(sheetsService) {
         this.sheetsService = sheetsService;
     }
     async validateUser({ username, password }) {
         const data = await this.sheetsService.getData(this.spreadsheetId, this.range);
         for (const row of data) {
-            const [id, storedUsername, storedPassword] = row;
+            const [id, storedUsername, storedPassword, firstName, lastName] = row;
             if (storedUsername?.trim() === username &&
                 storedPassword?.trim() === password) {
-                return { id, username: storedUsername };
+                return {
+                    id,
+                    username: storedUsername,
+                    firstName,
+                    lastName
+                };
             }
         }
         throw new common_1.UnauthorizedException('Invalid credentials');

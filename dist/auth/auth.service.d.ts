@@ -9,5 +9,7 @@ export declare class AuthService {
     validateUser({ username, password }: LoginDto): Promise<{
         id: any;
         username: any;
+        firstName: any;
+        lastName: any;
     }>;
 }
