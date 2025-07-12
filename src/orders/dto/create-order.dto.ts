@@ -1,6 +1,11 @@
 export class CreateOrderDto {
+  orderId: string;
+  date: string;
   customerName: string;
   customerAddress: string;
-  contactNo: string;
-  deliveryType: 'pickup' | 'delivery';  // you can expand this later
+  customerNumber: string;
+  status: string;
+  orderedItems: any[]; // could define a specific type
+  totalPrice: number;
+  salesAgent: string;
 }

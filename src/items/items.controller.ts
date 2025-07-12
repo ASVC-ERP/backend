@@ -8,6 +8,7 @@ export class ItemsController {
 
   @Post()
   create(@Body() dto: CreateItemDto) {
+    console.log("📥 Received item from frontend:", dto);
     return this.itemsService.create(dto);
   }
 

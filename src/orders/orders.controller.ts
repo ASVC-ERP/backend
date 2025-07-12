@@ -8,6 +8,7 @@ export class OrdersController {
 
   @Post()
   create(@Body() dto: CreateOrderDto) {
+    console.log("📥 Received order from frontend:", dto);
     return this.ordersService.create(dto);
   }
 
