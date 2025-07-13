@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateItemDto } from './dto/create-item.dto';
 import { SheetsService } from '../sheets/sheets.service';
 
@@ -16,7 +16,7 @@ export class ItemsService {
     const existingRows = await this.sheetsService.getData(this.spreadsheetId, this.range);
 
   // Check if itemCode already exists
-  const existingItem = existingRows.find(row => row[1] === item.itemCode);
+  const existingItem = existingRows.find(row => row[0] === item.itemCode);
   if (existingItem) {
     throw new Error(`Item with code "${item.itemCode}" already exists.`);
   }
@@ -55,6 +55,24 @@ export class ItemsService {
       price3: Number(row[7]),
       price4: Number(row[8]),
     }));
+  }
+
+  async addStock(itemCode: string, quantityToAdd: number): Promise<void> {
+    const data = await this.sheetsService.getData(this.spreadsheetId, this.range);
+
+    for (let i = 0; i < data.length; i++) {
+      const row = data[i];
+      if (row[0] === itemCode) {
+        const currentStock = Number(row[4]) || 0;
+        const newStock = currentStock + quantityToAdd;
+
+        const rowNumber = i + 2; // Because data starts at row 2
+        const cell = `E${rowNumber}`; // Column E = stock
+
+        await this.sheetsService.updateCell(this.spreadsheetId, this.sheetName, cell, newStock);
+        break;
+      }
+    }
   }
 
   async search(query: string) {

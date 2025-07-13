@@ -1,5 +1,5 @@
 // suppliers.controller.ts
-import { Controller, Get, Post, Body } from '@nestjs/common';
+import { Controller, Get, Post, Put, Param, NotFoundException, Body } from '@nestjs/common';
 import { SheetsService } from '../sheets/sheets.service';
 
 @Controller('suppliers')
@@ -22,5 +22,33 @@ export class SuppliersController {
     const { id, name, address } = body;
     await this.sheetsService.appendData(this.spreadsheetId, this.range, [[id, name, address]]);
     return { message: 'Supplier added successfully' };
+  }
+
+  //TODO: need to refactor cause too many lines
+  @Put(':id')
+  async updateSupplier(
+    @Param('id') supplierId: string,
+    @Body() body: { newId?: string; name?: string; address?: string }
+  ) {
+    const rows = await this.sheetsService.getData(this.spreadsheetId, this.range);
+
+    const rowIndex = rows.findIndex(row => row[0] === supplierId);
+    if (rowIndex === -1) {
+      throw new NotFoundException(`Supplier with ID "${supplierId}" not found.`);
+    }
+
+    const rowNumber = rowIndex + 2;
+
+    if (body.newId) {
+      await this.sheetsService.updateCell(this.spreadsheetId, this.sheetName, `A${rowNumber}`, body.newId);
+    }
+    if (body.name) {
+      await this.sheetsService.updateCell(this.spreadsheetId, this.sheetName, `B${rowNumber}`, body.name);
+    }
+    if (body.address) {
+      await this.sheetsService.updateCell(this.spreadsheetId, this.sheetName, `C${rowNumber}`, body.address);
+    }
+
+    return { message: 'Supplier updated successfully.' };
   }
 }

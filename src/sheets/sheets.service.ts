@@ -39,6 +39,19 @@ export class SheetsService implements OnModuleInit {
     });
   }
 
+  async updateCell(spreadsheetId: string, sheetName: string, cell: string, newValue: any): Promise<void> {
+    const range = `${sheetName}!${cell}`;
+
+    await this.sheetsClient.spreadsheets.values.update({
+      spreadsheetId,
+      range,
+      valueInputOption: 'RAW',
+      requestBody: {
+        values: [[newValue]],
+      },
+    });
+  }
+
   async searchInventory(spreadsheetId: string, range: string): Promise<any[]> {
     const res = await this.sheetsClient.spreadsheets.values.get({
       spreadsheetId,

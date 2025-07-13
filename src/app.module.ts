@@ -7,14 +7,18 @@ import { OrdersModule } from './orders/orders.module';
 import { ItemsModule } from './items/items.module';
 import { SuppliersModule } from './suppliers/suppliers.module';
 import { AuthModule } from './auth/auth.module';
+import { InventoryModule } from './inventory/inventory.module';
+import { SuppliersInvoiceModule } from './suppliers-invoice/suppliers-invoice.module';
 
 @Module({
   imports: [
-    SheetsModule,       // Google Sheet Database Module
+    SheetsModule,
     OrdersModule, 
     ItemsModule,
     SuppliersModule,
-    AuthModule,    // Suppliers Module
+    AuthModule,
+    InventoryModule,
+    SuppliersInvoiceModule,
   ],
   controllers: [AppController],
   providers: [AppService],
