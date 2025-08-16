@@ -9,6 +9,8 @@ import { SuppliersModule } from './suppliers/suppliers.module';
 import { AuthModule } from './auth/auth.module';
 import { InventoryModule } from './inventory/inventory.module';
 import { SuppliersInvoiceModule } from './suppliers-invoice/suppliers-invoice.module';
+import { CustomersModule } from './customers/customers.module';
+import { InvoiceModule } from './invoice/invoice.module';
 
 @Module({
   imports: [
@@ -19,6 +21,8 @@ import { SuppliersInvoiceModule } from './suppliers-invoice/suppliers-invoice.mo
     AuthModule,
     InventoryModule,
     SuppliersInvoiceModule,
+    CustomersModule,
+    InvoiceModule,
   ],
   controllers: [AppController],
   providers: [AppService],
