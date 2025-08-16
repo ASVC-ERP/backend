@@ -12,20 +12,8 @@ export class ItemsController {
     return this.itemsService.create(dto);
   }
 
-  //Get All Inventory
   @Get()
-  findAll() {
-    return this.itemsService.findAll();
-  }
-
-  @Get('search')
-  async search(@Query('query') query: string) {
-    console.log('🔍 Received query:', query);
-    try {
-      return await this.itemsService.search(query);
-    } catch (error) {
-      console.error('❌ Search failed:', error);
-      throw error; // or throw new InternalServerErrorException()
-    }
+  async findAll(@Query('search') search?: string) {
+    return this.itemsService.findAll(search);
   }
 }

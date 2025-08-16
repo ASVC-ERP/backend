@@ -1,11 +1,19 @@
+export enum OrderStatus {
+  Pending = "pending",
+  Confirmed = "confirmed",
+  Shipped = "shipped",
+  Delivered = "delivered",
+  Canceled = "canceled",
+}
+
 export class CreateOrderDto {
   orderId: string;
   date: string;
   customerName: string;
   customerAddress: string;
   customerNumber: string;
-  status: string;
-  orderedItems: any[]; // could define a specific type
+  orderedItems: any[];
   totalPrice: number;
   salesAgent: string;
+  status: OrderStatus;
 }

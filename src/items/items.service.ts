@@ -41,10 +41,10 @@ export class ItemsService {
     return newItem;
   }
 
-  async findAll() {
+  async findAll(search?: string) {
     const data = await this.sheetsService.getData(this.spreadsheetId, this.range);
 
-    return data.map((row, index) => ({
+    const items = data.map((row) => ({
       itemCode: row[0],
       itemName: row[1],
       brand: row[2],
@@ -55,9 +55,19 @@ export class ItemsService {
       price3: Number(row[7]),
       price4: Number(row[8]),
     }));
+
+    if (search) {
+      return items.filter(
+        (item) =>
+          (item.itemName || "").toLowerCase().includes(search.toLowerCase()) ||
+          (item.itemCode || "").toLowerCase().includes(search.toLowerCase())
+      );
+    }
+
+    return items;
   }
 
-  async addStock(itemCode: string, quantityToAdd: number): Promise<void> {
+  async addStock(itemCode: string, quantityToAdd: number, grossPrice: number): Promise<void> {
     const data = await this.sheetsService.getData(this.spreadsheetId, this.range);
 
     for (let i = 0; i < data.length; i++) {
@@ -66,15 +76,53 @@ export class ItemsService {
         const currentStock = Number(row[4]) || 0;
         const newStock = currentStock + quantityToAdd;
 
-        const rowNumber = i + 2; // Because data starts at row 2
-        const cell = `E${rowNumber}`; // Column E = stock
+        // Compute unit cost based on the latest gross price
+        const newUnitCost = quantityToAdd ? grossPrice / quantityToAdd : 0;
 
-        await this.sheetsService.updateCell(this.spreadsheetId, this.sheetName, cell, newStock);
+        // Calculate prices
+        const price1 = newUnitCost * 0.5;      // 50% markup
+        const price2 = newUnitCost + 40;       // $40 fixed markup
+        const price3 = newUnitCost * 1.3;      // 30% revenue
+
+        const rowNumber = i + 2; // data starts at row 2
+
+        // Update stock
+        await this.sheetsService.updateCell(this.spreadsheetId, this.sheetName, `E${rowNumber}`, newStock);
+
+        // Update prices
+        await this.sheetsService.updateCell(this.spreadsheetId, this.sheetName, `G${rowNumber}`, price1.toFixed(2));
+        await this.sheetsService.updateCell(this.spreadsheetId, this.sheetName, `H${rowNumber}`, price2.toFixed(2));
+        await this.sheetsService.updateCell(this.spreadsheetId, this.sheetName, `I${rowNumber}`, price3.toFixed(2));
+
         break;
       }
     }
   }
 
+  async removeStock(itemCode: string, quantityToRemove: number): Promise<void> {
+    const data = await this.sheetsService.getData(this.spreadsheetId, this.range);
+
+    for (let i = 0; i < data.length; i++) {
+      const row = data[i];
+      if (row[0] === itemCode) {
+        const currentStock = Number(row[4]) || 0;
+        if (currentStock < quantityToRemove) {
+          throw new Error(
+            `Cannot remove ${quantityToRemove} units. Only ${currentStock} in stock.`
+          );
+        }
+
+        const newStock = currentStock - quantityToRemove;
+        const rowNumber = i + 2;
+        const cell = `E${rowNumber}`;
+
+        await this.sheetsService.updateCell(this.spreadsheetId, this.sheetName, cell, newStock);
+        break;
+      }
+    } 
+  }
+
+/*
   async search(query: string) {
     const data = await this.sheetsService.searchInventory(this.spreadsheetId, this.range);
 
@@ -88,4 +136,5 @@ export class ItemsService {
       (item['itemName'] || '').toLowerCase().includes(query.toLowerCase())
     );
   }
+*/
 }

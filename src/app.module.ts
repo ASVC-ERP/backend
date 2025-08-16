@@ -8,9 +8,10 @@ import { ItemsModule } from './items/items.module';
 import { SuppliersModule } from './suppliers/suppliers.module';
 import { AuthModule } from './auth/auth.module';
 import { InventoryModule } from './inventory/inventory.module';
-import { SuppliersInvoiceModule } from './suppliers-invoice/suppliers-invoice.module';
+import { SuppliersInvoiceModule } from './suppliers/suppliers-invoice/suppliers-invoice.module';
 import { CustomersModule } from './customers/customers.module';
 import { InvoiceModule } from './invoice/invoice.module';
+import { DeliveryReceiptsModule } from './delivery-receipts/delivery-receipts.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { InvoiceModule } from './invoice/invoice.module';
     SuppliersInvoiceModule,
     CustomersModule,
     InvoiceModule,
+    DeliveryReceiptsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
