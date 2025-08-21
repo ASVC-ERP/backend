@@ -45,7 +45,7 @@ export class SuppliersInvoiceService {
       item.unitCost,
       item.discount || 0,
       item.grossPrice,
-      item.currency || 'USD',
+      item.currency || 'PHP',
       item.conversionFactor || 1,
       item.convertedGrossPrice || item.grossPrice,
       dto.status || 'purchase',
@@ -55,7 +55,7 @@ export class SuppliersInvoiceService {
 
     for (const item of dto.items) {
       if (dto.status === 'purchase') {
-        await this.itemsService.addStock(item.itemCode, item.quantity, item.grossPrice);
+        await this.itemsService.addStock(item.itemCode, item.quantity, item.convertedGrossPrice);
       } else if (dto.status === 'return') {
         await this.itemsService.removeStock(item.itemCode, item.quantity);
       }

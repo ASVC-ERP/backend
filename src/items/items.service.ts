@@ -67,7 +67,7 @@ export class ItemsService {
     return items;
   }
 
-  async addStock(itemCode: string, quantityToAdd: number, grossPrice: number): Promise<void> {
+  async addStock(itemCode: string, quantityToAdd: number, convertedGrossPrice: number): Promise<void> {
     const data = await this.sheetsService.getData(this.spreadsheetId, this.range);
 
     for (let i = 0; i < data.length; i++) {
@@ -76,17 +76,15 @@ export class ItemsService {
         const currentStock = Number(row[4]) || 0;
         const newStock = currentStock + quantityToAdd;
 
-        // Compute unit cost based on the latest gross price
-        const newUnitCost = quantityToAdd ? grossPrice / quantityToAdd : 0;
+        const newUnitCost = quantityToAdd ? convertedGrossPrice / quantityToAdd : 0;
 
         // Calculate prices
-        const price1 = newUnitCost * 0.5;      // 50% markup
-        const price2 = newUnitCost + 40;       // $40 fixed markup
-        const price3 = newUnitCost * 1.3;      // 30% revenue
+        const price1 = newUnitCost * 1.5; // 50% markup
+        const price2 = newUnitCost * 1.4; // 40% markup
+        const price3 = newUnitCost * 1.3; // 30% markup
+  
+        const rowNumber = i + 2;
 
-        const rowNumber = i + 2; // data starts at row 2
-
-        // Update stock
         await this.sheetsService.updateCell(this.spreadsheetId, this.sheetName, `E${rowNumber}`, newStock);
 
         // Update prices

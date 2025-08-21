@@ -8,12 +8,12 @@ export class CreateInvoiceItemDto {
   grossPrice: number;
   currency?: string;
   conversionFactor?: number;
-  convertedGrossPrice?: number;
+  convertedGrossPrice: number;
 }
 
 export class CreateInvoiceDto {
   poNumber?: string;
-  purchaseDate: string; // YYYY-MM-DD
+  purchaseDate: string;
   items: CreateInvoiceItemDto[];
   status?: 'purchase' | 'return';
   supplierID?: string;
