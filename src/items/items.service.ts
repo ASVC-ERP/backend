@@ -29,11 +29,7 @@ export class ItemsService {
       newItem.itemName,
       newItem.brand,
       newItem.origin,
-      newItem.stock,
-      newItem.price1,
-      newItem.price2,
-      newItem.price3,
-      newItem.price4
+      newItem.minStock,
     ]];
 
     this.sheetsService.appendData(this.spreadsheetId, this.range, row).catch(console.error);
@@ -50,10 +46,13 @@ export class ItemsService {
       brand: row[2],
       origin: row[3],
       stock: Number(row[4]),
-      price1: Number(row[5]),
-      price2: Number(row[6]),
-      price3: Number(row[7]),
-      price4: Number(row[8]),
+      minStock: Number(row[5]),
+      price : {
+        price1: Number(row[6]),
+        price2: Number(row[7]),
+        price3: Number(row[8]),
+        price4: Number(row[9])
+      },
     }));
 
     if (search) {

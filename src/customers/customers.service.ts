@@ -5,7 +5,7 @@ import { SheetsService } from '../sheets/sheets.service';
 export type Customer = {
   customerID: string;
   customerName: string;
-  customerContact: number;
+  customerContact: string;
   customerAddress: string;
 };
 
