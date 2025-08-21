@@ -14,17 +14,29 @@ export class SuppliersInvoiceService {
     private readonly itemsService: ItemsService,
   ) {}
 
-  /** Generate dynamic invoice number */
-  private async generateInvoiceNumber(): Promise<string> {
-    const data = await this.sheetsService.getData(
-      this.spreadsheetId,
-      `${this.sheetName}!A2:A`,
-    );
-    const lastNumber = data.length
-      ? Number(data[data.length - 1][0].replace('INV-', ''))
-      : 0;
-    return `INV-${lastNumber + 1}`;
+/** Generate dynamic invoice number */
+private async generateInvoiceNumber(): Promise<string> {
+  const data = await this.sheetsService.getData(
+    this.spreadsheetId,
+    `${this.sheetName}!A2:A`,
+  );
+
+  let maxNumber = 0;
+
+  for (const row of data) {
+    const invoiceId = row[0]?.trim() || '';
+    if (invoiceId.startsWith('INV')) {
+      const numericPart = invoiceId.replace('INV', '');
+      const parsed = parseInt(numericPart, 10);
+      if (!isNaN(parsed)) {
+        maxNumber = Math.max(maxNumber, parsed);
+      }
+    }
   }
+
+  const nextNumber = (maxNumber + 1).toString().padStart(3, '0');
+  return `INV${nextNumber}`;
+}
 
   /** Add invoice */
   async addInvoice(dto: CreateInvoiceDto) {
@@ -57,6 +69,7 @@ export class SuppliersInvoiceService {
       item.conversionFactor || 1,
       item.subTotal,
       dto.status || 'Purchased',
+      dto.supplierID
     ]);
 
     await this.sheetsService.appendData(this.spreadsheetId, this.range, values);

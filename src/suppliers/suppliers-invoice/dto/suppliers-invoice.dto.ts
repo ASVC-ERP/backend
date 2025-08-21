@@ -43,7 +43,7 @@ export class CreateInvoiceDto {
   poNum: string;
 
   @IsDateString()
-  purchaseDate: string; // e.g. "2025-08-21"
+  purchaseDate: Date; // e.g. "2025-08-21"
 
   @IsArray()
   @ValidateNested({ each: true })
