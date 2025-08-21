@@ -1,20 +1,60 @@
+import {
+  IsString,
+  IsNumber,
+  IsOptional,
+  IsArray,
+  ValidateNested,
+  IsIn,
+  IsDateString,
+} from 'class-validator';
+import { Type } from 'class-transformer';
+
 export class CreateInvoiceItemDto {
+  @IsString()
   itemName: string;
+
+  @IsString()
   itemCode: string;
+
+  @IsNumber()
   quantity: number;
+
+  @IsString()
   unit: string;
+
+  @IsNumber()
   unitCost: number;
-  discount?: number;
-  grossPrice: number;
+
+  @IsOptional()
+  @IsString()
   currency?: string;
-  conversionFactor?: number;
-  convertedGrossPrice: number;
+
+  @IsOptional()
+  @IsNumber()
+  conversionFactor: number = 1; // default to 1
+
+  @IsNumber()
+  subTotal: number;
 }
 
-export class CreateInvoiceDto {
-  poNumber?: string;
-  purchaseDate: string;
+export class CreateInvoiceDto { 
+
+  @IsString()
+  poNum: string;
+
+  @IsDateString()
+  purchaseDate: string; // e.g. "2025-08-21"
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateInvoiceItemDto)
   items: CreateInvoiceItemDto[];
-  status?: 'purchase' | 'return';
+
+  @IsOptional()
+  @IsIn(['Purchased', 'Returned'])
+  status?: 'Purchased' | 'Returned';
+
+  @IsOptional()
+  @IsString()
   supplierID?: string;
 }
