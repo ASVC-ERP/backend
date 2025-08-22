@@ -7,85 +7,111 @@ import { CreateInvoiceDto } from './dto/suppliers-invoice.dto';
 export class SuppliersInvoiceService {
   private spreadsheetId = '1868A0REbI30r4r_wmBKcD4YI0UhrB2CjS8FJ8jplWAI';
   private sheetName = 'Supplier Invoice';
-  private range = `${this.sheetName}!A2:O`;
+  private range = `${this.sheetName}!A2:M`;
 
   constructor(
     private readonly sheetsService: SheetsService,
     private readonly itemsService: ItemsService,
   ) {}
 
-  /** Generate dynamic invoice number */
-  private async generateInvoiceNumber(): Promise<string> {
-    const data = await this.sheetsService.getData(this.spreadsheetId, `${this.sheetName}!A2:A`);
-    const lastNumber = data.length ? Number(data[data.length - 1][0].replace('INV-', '')) : 0;
-    return `INV-${lastNumber + 1}`;
+/** Generate dynamic invoice number */
+private async generateInvoiceNumber(): Promise<string> {
+  const data = await this.sheetsService.getData(
+    this.spreadsheetId,
+    `${this.sheetName}!A2:A`,
+  );
+
+  let maxNumber = 0;
+
+  for (const row of data) {
+    const invoiceId = row[0]?.trim() || '';
+    if (invoiceId.startsWith('INV')) {
+      const numericPart = invoiceId.replace('INV', '');
+      const parsed = parseInt(numericPart, 10);
+      if (!isNaN(parsed)) {
+        maxNumber = Math.max(maxNumber, parsed);
+      }
+    }
   }
+
+  const nextNumber = (maxNumber + 1).toString().padStart(3, '0');
+  return `INV${nextNumber}`;
+}
 
   /** Add invoice */
   async addInvoice(dto: CreateInvoiceDto) {
-    const inventory = await this.sheetsService.getData(this.spreadsheetId, 'Inventory!A2:A');
-    const existingItemCodes = inventory.map(row => row[0]);
+    const inventory = await this.sheetsService.getData(
+      this.spreadsheetId,
+      'Inventory!A2:A',
+    );
+    const existingItemCodes = inventory.map((row) => row[0]);
 
     for (const item of dto.items) {
       if (!existingItemCodes.includes(item.itemCode)) {
-        throw new BadRequestException(`Item "${item.itemCode}" does not exist in inventory.`);
+        throw new BadRequestException(
+          `Item "${item.itemCode}" does not exist in inventory.`,
+        );
       }
     }
 
-    const invoiceNumber = await this.generateInvoiceNumber();
+    const invoiceID = await this.generateInvoiceNumber();
 
-    const values = dto.items.map(item => [
-      invoiceNumber,
-      dto.poNumber || '',
+    const values = dto.items.map((item) => [
+      invoiceID,
+      dto.poNum,
       dto.purchaseDate,
       item.itemName,
       item.itemCode,
       item.quantity,
       item.unit,
       item.unitCost,
-      item.discount || 0,
-      item.grossPrice,
       item.currency || 'PHP',
       item.conversionFactor || 1,
-      item.convertedGrossPrice || item.grossPrice,
-      dto.status || 'purchase',
+      item.subTotal,
+      dto.status || 'Purchased',
+      dto.supplierID
     ]);
 
     await this.sheetsService.appendData(this.spreadsheetId, this.range, values);
 
     for (const item of dto.items) {
-      if (dto.status === 'purchase') {
-        await this.itemsService.addStock(item.itemCode, item.quantity, item.convertedGrossPrice);
-      } else if (dto.status === 'return') {
+      if (dto.status === 'Purchased') {
+        await this.itemsService.addStock(
+          item.itemCode,
+          item.quantity,
+          item.subTotal,
+        );
+      } else if (dto.status === 'Returned') {
         await this.itemsService.removeStock(item.itemCode, item.quantity);
       }
     }
 
-    return { message: 'Invoice added successfully', invoiceNumber };
+    return { message: 'Invoice added successfully', invoiceID };
   }
 
   async findAll() {
-    const data = await this.sheetsService.getData(this.spreadsheetId, this.range);
+    const data = await this.sheetsService.getData(
+      this.spreadsheetId,
+      this.range,
+    );
 
     return data
-      .map(row => ({
-        supplierInvoiceID: row[0] || '',
-        poNumber: row[1] || '',
+      .map((row) => ({
+        invoiceID: row[0] || '',
+        poNum: row[1] || '',
         purchaseDate: row[2] || '',
         itemName: row[3] || '',
         itemCode: row[4] || '',
         quantity: Number(row[5]) || 0,
         unit: row[6] || '',
         unitCost: Number(row[7]) || 0,
-        discount: Number(row[8]) || 0,
-        grossPrice: Number(row[9]) || 0,
-        currency: row[10] || 'PHP',
-        conversionFactor: Number(row[11]) || 1,
-        convertedGrossPrice: Number(row[12]) || 0,
-        status: row[13] || 'purchase',
-        supplierID: row[14]?.trim() || '',
+        currency: row[8] || 'PHP',
+        conversionFactor: Number(row[9]) || 1,
+        subTotal: Number(row[10]) || 0,
+        status: row[11] || 'Purchased',
+        supplierID: row[12]?.trim() || '',
       }))
-      .filter(row => row.supplierInvoiceID && row.itemCode);
+      .filter((row) => row.invoiceID && row.itemCode);
   }
 
   async findBySupplier(supplierID?: string) {
@@ -95,27 +121,25 @@ export class SuppliersInvoiceService {
     for (const inv of allInvoices) {
       if (supplierID && inv.supplierID !== supplierID) continue;
 
-      if (!groupedMap.has(inv.supplierInvoiceID)) {
-        groupedMap.set(inv.supplierInvoiceID, {
-          supplierInvoiceID: inv.supplierInvoiceID,
-          poNumber: inv.poNumber,
+      if (!groupedMap.has(inv.invoiceID)) {
+        groupedMap.set(inv.invoiceID, {
+          invoiceID: inv.invoiceID,
+          poNum: inv.poNum,
           purchaseDate: inv.purchaseDate,
+          status: inv.status,
           items: [],
         });
       }
 
-      groupedMap.get(inv.supplierInvoiceID).items.push({
+      groupedMap.get(inv.invoiceID).items.push({
         itemName: inv.itemName,
         itemCode: inv.itemCode,
         quantity: inv.quantity,
         unit: inv.unit,
         unitCost: inv.unitCost,
-        discount: inv.discount,
-        grossPrice: inv.grossPrice,
         currency: inv.currency,
         conversionFactor: inv.conversionFactor,
-        convertedGrossPrice: inv.convertedGrossPrice,
-        status: inv.status,
+        subTotal: inv.subTotal,
       });
     }
 
@@ -127,7 +151,6 @@ export class SuppliersInvoiceService {
     const code = itemCode?.trim();
 
     // Return all rows where itemCode matches
-    return allInvoices.filter(inv => inv.itemCode === code);
+    return allInvoices.filter((inv) => inv.itemCode === code);
   }
-
 }
