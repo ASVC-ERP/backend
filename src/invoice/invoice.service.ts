@@ -47,4 +47,47 @@ export class InvoiceService {
       (i.invoiceID || '').toLowerCase().includes(query.toLowerCase()),
     );
   }
+
+  async createInvoiceFromOrder(order: any): Promise<Invoice> {
+    const invoices = await this.findAll();
+    const lastInvoice = invoices[invoices.length - 1];
+    const lastNumber = lastInvoice
+      ? parseInt(lastInvoice.invoiceID.replace('INV', '')) || 0
+      : 0;
+    const invoiceID = `INV${(lastNumber + 1).toString().padStart(3, '0')}`;
+
+    const grossPrice = order.orderedItems.reduce(
+      (sum, item) => sum + item.price * item.quantity,
+      0,
+    );
+
+    const discount = 0;
+    const netPrice = grossPrice - discount;
+
+    const payload = [
+      [
+        order.date,
+        invoiceID,
+        order.customerName,
+        order.orderedItems.length,
+        grossPrice,
+        discount,
+        netPrice,
+        'Pending',
+      ],
+    ];
+
+    await this.sheetsService.appendData(this.spreadsheetId, this.range, payload);
+
+    return {
+      date: order.date,
+      invoiceID,
+      customerName: order.customerName,
+      numItems: order.orderedItems.length,
+      grossPrice,
+      discount,
+      netPrice,
+      status: 'Pending',
+    };
+  }
 }

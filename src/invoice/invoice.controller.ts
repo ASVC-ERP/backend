@@ -1,10 +1,21 @@
-import { Controller, Get, Post, Body, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, Param } from '@nestjs/common';
 import { InvoiceService, Invoice } from './invoice.service';
+import { OrdersService } from '../orders/orders.service';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
 
 @Controller('invoice')
 export class InvoiceController {
-  constructor(private readonly invoiceService: InvoiceService) {}
+  constructor(
+    private readonly invoiceService: InvoiceService,
+    private readonly ordersService: OrdersService,
+  ) {}
+
+  @Post(':orderId/invoice')
+  async invoiceOrder(@Param('orderId') orderId: string) {
+    const order = await this.ordersService.findOne(orderId);
+    const invoice = await this.invoiceService.createInvoiceFromOrder(order);
+    return invoice;
+  }
 
   @Get()
   async findAll(): Promise<Invoice[]> {

@@ -7,5 +7,6 @@ import { SheetsModule } from '../sheets/sheets.module';
   imports: [SheetsModule],
   controllers: [OrdersController],
   providers: [OrdersService],
+  exports: [OrdersService],
 })
 export class OrdersModule {}

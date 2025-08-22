@@ -80,6 +80,7 @@ export class OrdersService {
     return Object.values(ordersMap);
   }
 
+/*
   async findOne(orderId: string): Promise<CreateOrderDto> {
     const rows = await this.sheetsService.getData(this.spreadsheetId, this.range);
     const orderRows = rows.filter(r => r.orderId === orderId);
@@ -107,5 +108,31 @@ export class OrdersService {
       })),
     };
   }
+*/
 
+  async findOne(orderId: string): Promise<CreateOrderDto> {
+    const rows = await this.sheetsService.getData(this.spreadsheetId, this.range);
+    const orderRows = rows.filter(r => r[0] === orderId); // ✅ use r[0] for orderId
+
+    if (!orderRows.length) {
+      throw new NotFoundException(`Order ${orderId} not found`);
+    }
+
+    const firstRow = orderRows[0];
+    return {
+      orderId: firstRow[0],
+      date: firstRow[1],
+      customerName: firstRow[2],
+      customerAddress: firstRow[3],
+      customerNumber: firstRow[4],
+      salesAgent: firstRow[10],
+      status: firstRow[5],
+      totalPrice: orderRows.reduce((sum, r) => sum + Number(r[8] || 0) * Number(r[7] || 0), 0),
+      orderedItems: orderRows.map(r => ({
+        itemName: r[6],
+        quantity: Number(r[7] || 0),
+        price: Number(r[8] || 0),
+      })),
+    };
+  }
 }
