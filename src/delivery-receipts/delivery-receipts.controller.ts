@@ -180,7 +180,7 @@ export class DeliveryReceiptsController {
   }
 
   // ===== NO VAT VERSION =====
-  @Get('invoice-no-vat')
+  @Get('no-invoice')
   async getInvoiceNoVat(@Res() res: Response) {
     const doc = new PDFDocument({ margin: 40 });
 
