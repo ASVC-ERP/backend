@@ -9,20 +9,18 @@ export type Order = CreateOrderDto;
 export class OrdersService {
   private spreadsheetId = '1868A0REbI30r4r_wmBKcD4YI0UhrB2CjS8FJ8jplWAI';
   private sheetName = 'Sales Order';
-  private range = `${this.sheetName}!A2:K`; // A–K = 11 columns
+  private range = `${this.sheetName}!A2:K`;
 
   constructor(private readonly sheetsService: SheetsService) {}
 
   async create(order: CreateOrderDto): Promise<Order> {
     const existingRows = await this.sheetsService.getData(this.spreadsheetId, this.range);
 
-    // Check if orderId already exists in ANY row
     const exists = existingRows.some(row => row[0] === order.orderId);
     if (exists) {
       throw new Error(`Order ID "${order.orderId}" already exists.`);
     }
 
-    // One row per ordered item
     const rows = order.orderedItems.map(item => ([
       order.orderId,         // A
       order.date,            // B
@@ -106,133 +104,6 @@ export class OrdersService {
       })),
     };
   }
-/*
-  async update(orderId: string, dto: UpdateOrderDto): Promise<Order> {
-    const rows = await this.sheetsService.getData(this.spreadsheetId, this.range);
-
-    // Find all rows belonging to this orderId
-    const rowIndexes = rows
-      .map((row, i) => (row[0] === orderId ? i : -1))
-      .filter(i => i !== -1);
-
-    if (rowIndexes.length === 0) {
-      throw new NotFoundException(`Order ${orderId} not found`);
-    }
-
-    if (!dto.orderedItems || dto.orderedItems.length === 0) {
-      throw new Error("Update must include at least one ordered item.");
-    }
-
-    // Build new rows
-    const newRows = dto.orderedItems.map(item => ([
-      dto.orderId,
-      dto.date,
-      dto.customerName,
-      dto.customerAddress,
-      dto.customerNumber,
-      dto.status,
-      item.itemName,
-      item.quantity,
-      item.price,
-      dto.totalPrice,
-      dto.salesAgent,
-    ]));
-
-    // Overwrite each row by exact index
-    for (let i = 0; i < newRows.length; i++) {
-      const sheetRowNumber = rowIndexes[i] + 2; // map rowIndexes directly
-      await this.sheetsService.updateRow(
-        this.spreadsheetId,
-        this.sheetName,
-        sheetRowNumber,
-        newRows[i]
-      );
-    }
-
-    // If new order has fewer rows, clear leftovers
-    if (newRows.length < rowIndexes.length) {
-      for (let i = newRows.length; i < rowIndexes.length; i++) {
-        const sheetRowNumber = rowIndexes[i] + 2;
-        await this.sheetsService.clearRow(this.spreadsheetId, this.sheetName, sheetRowNumber);
-      }
-    }
-    return dto as Order;
-  }
-
-  async update(orderId: string, dto: UpdateOrderDto): Promise<Order> {
-    const rows = await this.sheetsService.getData(this.spreadsheetId, this.range);
-
-    // Find all rows for this orderId
-    const rowIndexes = rows
-      .map((row, i) => (row[0] === orderId ? i : -1))
-      .filter(i => i !== -1);
-
-    if (rowIndexes.length === 0) {
-      throw new NotFoundException(`Order ${orderId} not found`);
-    }
-
-    // ✅ Existing items in sheet
-    const existingItems = rowIndexes.map(i => rows[i][6]); // col G = itemName
-
-    // ✅ Separate new vs existing
-    const itemsToUpdate: any[] = [];
-    const itemsToAdd: any[] = [];
-
-    dto.orderedItems.forEach(item => {
-      if (existingItems.includes(item.itemName)) {
-        itemsToUpdate.push(item);
-      } else {
-        itemsToAdd.push(item);
-      }
-    });
-
-    // ✅ Update existing rows
-    for (let i = 0; i < rowIndexes.length; i++) {
-      const sheetRowNumber = rowIndexes[i] + 2;
-      const item = itemsToUpdate.find(it => it.itemName === rows[rowIndexes[i]][6]);
-      if (item) {
-        await this.sheetsService.updateRow(
-          this.spreadsheetId,
-          this.sheetName,
-          sheetRowNumber,
-          [
-            dto.orderId,
-            dto.date,
-            dto.customerName,
-            dto.customerAddress,
-            dto.customerNumber,
-            dto.status,
-            item.itemName,
-            item.quantity,
-            item.price,
-            dto.totalPrice,
-            dto.salesAgent,
-          ]
-        );
-      }
-    }
-
-    // ✅ Append brand new items
-    if (itemsToAdd.length > 0) {
-      const newRows = itemsToAdd.map(item => ([
-        dto.orderId,
-        dto.date,
-        dto.customerName,
-        dto.customerAddress,
-        dto.customerNumber,
-        dto.status,
-        item.itemName,
-        item.quantity,
-        item.price,
-        dto.totalPrice,
-        dto.salesAgent,
-      ]));
-      await this.sheetsService.appendData(this.spreadsheetId, this.range, newRows);
-    }
-
-    return dto as Order;
-  }
-*/
 
   async update(orderId: string, dto: UpdateOrderDto) {
     const rows = await this.sheetsService.getData(this.spreadsheetId, this.range);
@@ -248,13 +119,9 @@ export class OrdersService {
       throw new Error("Update must include at least one ordered item.");
     }
 
-    // Keep all rows not belonging to this order
     const otherRows = rows.filter(row => row[0] !== orderId);
-
-    // Calculate totalPrice
     const totalPrice = dto.orderedItems.reduce((sum, item) => sum + (item.price || 0) * (item.quantity || 0), 0);
 
-    // Build new rows for this order
     const updatedRows = dto.orderedItems.map(item => ([
       dto.orderId,
       dto.date,
@@ -269,7 +136,6 @@ export class OrdersService {
       dto.salesAgent,
     ]));
 
-    // Rewrite sheet with old orders + updated one
     await this.sheetsService.clear(this.spreadsheetId, this.range);
     await this.sheetsService.appendData(
       this.spreadsheetId,

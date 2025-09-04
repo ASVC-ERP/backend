@@ -8,7 +8,7 @@ export type Items = CreateItemDto;
 export class ItemsService {
   private spreadsheetId = '1868A0REbI30r4r_wmBKcD4YI0UhrB2CjS8FJ8jplWAI'; // Replace with your actual spreadsheet ID
   private sheetName = 'Inventory';
-  private range = `${this.sheetName}!A2:P`;
+  private range = `${this.sheetName}!A2:K`;
 
   constructor(private readonly sheetsService: SheetsService) {}
 
@@ -51,7 +51,7 @@ export class ItemsService {
         price1: Number(row[7]),
         price2: Number(row[8]),
         price3: Number(row[9]),
-        price4: Number(row[10]),
+        price4: Number(row[10])
       },
     }));
 
