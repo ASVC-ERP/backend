@@ -65,24 +65,25 @@ export class DeliveryReceiptsController {
     // Customer Info
     doc.text('SOLD TO: ', 50, ycurr + 100);
     doc.text('TIN: ', 50, ycurr + 115);
-    doc.text('Business Style: ', 50, ycurr + 130);
-    doc.text('Address: ', 50, ycurr + 145);
+    doc.text('Address: ', 50, ycurr + 130);
 
     doc.moveDown(2);
 
     // ===== TABLE =====
     const tableTop = 200;
-    const colX = { qty: 50, unit: 100, desc: 160, price: 400, amount: 480 };
+    const colX = { qty: 50, unit: 100, desc: 160, price: 320, discount: 400, amount: 480 };
 
     doc.font('Helvetica-Bold');
     doc.text('Quantity', colX.qty, tableTop);
     doc.text('Unit', colX.unit, tableTop);
     doc.text('Description', colX.desc, tableTop);
     doc.text('Unit Price', colX.price, tableTop);
+    doc.text('Discount', colX.discount, tableTop);
     doc.text('Amount', colX.amount, tableTop);
 
     doc.moveTo(50, tableTop + 15).lineTo(550, tableTop + 15).stroke();
 
+    /*
     // Items
     const items = [
       {
@@ -126,58 +127,59 @@ export class DeliveryReceiptsController {
 
       y += 20;
     });
-
+    */
+    let y = tableTop + 25;
+    y += 300;
     // ===== TOTALS =====
     // Start at the current Y
-    let currentY = doc.y + 20;
-
-    doc.font('Helvetica-Bold');
-    doc.text(`Total: `, colX.price, currentY, { width: 60, align: 'left' });
-    doc.text(`${total.toFixed(2)}`, colX.amount, currentY, { width: 70, align: 'right' });
-
-    const discount = total * 0.15;
-    const netTotal = total - discount;
-    const vat = netTotal * 0.12;
+    let currentY = doc.y + 370;
 
     currentY += 20;
     doc.font('Helvetica');
-    doc.text(`Less 15%: `, colX.price, currentY, { width: 60, align: 'left' });
-    doc.text(`-${discount.toFixed(2)}`, colX.amount, currentY, { width: 70, align: 'right' });
-
-    currentY += 20;
-    doc.font('Helvetica-Bold');
-    doc.text(`Total Amount: `, colX.price, currentY, { width: 120, align: 'left' });
-    doc.text(`${netTotal.toFixed(2)}`, colX.amount, currentY, { width: 70, align: 'right' });
+    doc.text(`Vatable Sales: `, colX.price, currentY, { width: 120, align: 'left' });
+//    doc.text(`${netTotal.toFixed(2)}`, colX.amount, currentY, { width: 70, align: 'right' });
 
     currentY += 20;
     doc.font('Helvetica');
     doc.text(`VAT: `, colX.price, currentY, { width: 60, align: 'left' });
-    doc.text(`${vat.toFixed(2)}`, colX.amount, currentY, { width: 70, align: 'right' });
+//    doc.text(`${vat.toFixed(2)}`, colX.amount, currentY, { width: 70, align: 'right' });
 
     currentY += 20;
     doc.font('Helvetica-Bold');
     doc.text(`Total Amount Due: `, colX.price, currentY, { width: 120, align: 'left' });
-    doc.text(`${(netTotal + vat).toFixed(2)}`, colX.amount, currentY, { width: 70, align: 'right' });
+//    doc.text(`${(netTotal + vat).toFixed(2)}`, colX.amount, currentY, { width: 70, align: 'right' });
 
 
     // ===== FOOTER =====
     doc.moveDown(4);
-    doc.fontSize(10).text(
+    doc.fontSize(8).text(
       'Received the above goods in good order and condition.',
-      50,
+      colX.price,
       y + 150,
     );
-    doc.text('By: ________________________   Cashier/Authorized Signature', 50, y + 180);
-
+    doc.text('By: ___________________________', colX.price, y + 170);
+    doc.text('        Signature Over Printed Name', colX.price, y + 180);
+    doc.text('Date: ________________________', colX.price, y + 200);
     // Add "Sales Invoice to Follow" at the bottom
-    doc.fontSize(10)
+    doc.fontSize(8)
       .font('Helvetica')
-      .text('Sales Invoice to Follow', 0, doc.page.height - 60, {
+      .text('Sales Invoice to Follow', 0, doc.page.height - 50, {
         align: 'center',
       });
 
     doc.end();
   }
+
+
+
+
+
+
+
+
+
+
+
 
   // ===== NO VAT VERSION =====
   @Get('no-invoice')
@@ -212,19 +214,19 @@ export class DeliveryReceiptsController {
     doc.moveDown(2);
     doc.text('SOLD TO: ', 50, ycurr + 100);
     doc.text('TIN: ', 50, ycurr + 115);
-    doc.text('Business Style: ', 50, ycurr + 130);
-    doc.text('Address: ', 50, ycurr + 145);
+    doc.text('Address: ', 50, ycurr + 130);
 
     doc.moveDown(2);
 
     const tableTop = 200;
-    const colX = { qty: 50, unit: 100, desc: 160, price: 400, amount: 480 };
+    const colX = { qty: 50, unit: 100, desc: 160, price: 320, discount: 400, amount: 480 };
 
     doc.font('Helvetica-Bold');
     doc.text('Quantity', colX.qty, tableTop);
     doc.text('Unit', colX.unit, tableTop);
     doc.text('Description', colX.desc, tableTop);
     doc.text('Unit Price', colX.price, tableTop);
+    doc.text('Discount', colX.discount, tableTop);
     doc.text('Amount', colX.amount, tableTop);
 
     doc.moveTo(50, tableTop + 15).lineTo(550, tableTop + 15).stroke();
@@ -236,6 +238,7 @@ export class DeliveryReceiptsController {
       { qty: 6, unit: 'PC', desc: 'TIMING BELT 95-UP L300 DIESEL', price: 610 },
     ];
 
+    /*
     doc.font('Helvetica');
     let y = tableTop + 25;
     let total = 0;
@@ -251,33 +254,34 @@ export class DeliveryReceiptsController {
 
       y += 20;
     });
+    */
 
-    let currentY = doc.y + 20;
+    let y = tableTop + 25;
+    y += 300;
 
-    doc.font('Helvetica-Bold');
-    doc.text(`Total: `, colX.price, currentY, { width: 60, align: 'left' });
-    doc.text(`${total.toFixed(2)}`, colX.amount, currentY, { width: 70, align: 'right' });
+    let currentY = doc.y + 370;
 
-    const discount = total * 0.15;
-    const netTotal = total - discount;
-
-    currentY += 20;
-    doc.font('Helvetica');
-    doc.text(`Less 15%: `, colX.price, currentY, { width: 60, align: 'left' });
-    doc.text(`-${discount.toFixed(2)}`, colX.amount, currentY, { width: 70, align: 'right' });
-
-    currentY += 20;
+    currentY += 60;
     doc.font('Helvetica-Bold');
     doc.text(`Total Amount Due: `, colX.price, currentY, { width: 120, align: 'left' });
-    doc.text(`${netTotal.toFixed(2)}`, colX.amount, currentY, { width: 70, align: 'right' });
+//    doc.text(`${netTotal.toFixed(2)}`, colX.amount, currentY, { width: 70, align: 'right' });
 
+    // ===== FOOTER =====
     doc.moveDown(4);
-    doc.fontSize(10).text(
+    doc.fontSize(8).text(
       'Received the above goods in good order and condition.',
-      50,
+      colX.price,
       y + 150,
     );
-    doc.text('By: ________________________   Cashier/Authorized Signature', 50, y + 180);
+    doc.text('By: ___________________________', colX.price, y + 170);
+    doc.text('        Signature Over Printed Name', colX.price, y + 180);
+    doc.text('Date: ________________________', colX.price, y + 200);
+    // Add "Sales Invoice to Follow" at the bottom
+    doc.fontSize(8)
+      .font('Helvetica')
+      .text('Sales Invoice to Follow', 0, doc.page.height - 50, {
+        align: 'center',
+      });
 
     doc.end();
   }

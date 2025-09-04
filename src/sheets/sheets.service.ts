@@ -30,12 +30,49 @@ export class SheetsService implements OnModuleInit {
     return res.data.values || [];
   }
 
+  async clearRow(spreadsheetId: string, sheetName: string, row: number) {
+    const range = `${sheetName}!A${row}:K${row}`; // A–K = your 11 columns
+    await this.sheetsClient.spreadsheets.values.clear({
+      spreadsheetId,
+      range,
+    });
+  }
+
   async appendData(spreadsheetId: string, range: string, values: any[][]): Promise<void> {
     await this.sheetsClient.spreadsheets.values.append({
       spreadsheetId,
       range,
       valueInputOption: 'RAW',
       requestBody: { values },
+    });
+  }
+
+ // 🔥 NEW: Clear a range
+  async clear(spreadsheetId: string, range: string) {
+    await this.sheetsClient.spreadsheets.values.clear({
+      spreadsheetId,
+      range,
+    });
+  }
+
+  // 🔥 OPTIONAL: Update specific rows instead of full clear/append
+  async updateData(spreadsheetId: string, range: string, values: any[][]) {
+    await this.sheetsClient.spreadsheets.values.update({
+      spreadsheetId,
+      range,
+      valueInputOption: "USER_ENTERED",
+      requestBody: { values },
+    });
+  }
+
+  // ✅ Update one row at a specific row number
+  async updateRow(spreadsheetId: string, sheetName: string, rowNumber: number, values: any[]) {
+    const range = `${sheetName}!A${rowNumber}:K${rowNumber}`; // A–K columns
+    await this.sheetsClient.spreadsheets.values.update({
+      spreadsheetId,
+      range,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values: [values] },
     });
   }
 
