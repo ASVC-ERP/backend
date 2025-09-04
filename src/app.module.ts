@@ -12,6 +12,7 @@ import { SuppliersInvoiceModule } from './suppliers/suppliers-invoice/suppliers-
 import { CustomersModule } from './customers/customers.module';
 import { InvoiceModule } from './invoice/invoice.module';
 import { DeliveryReceiptsModule } from './delivery-receipts/delivery-receipts.module';
+import { PackingListModule } from './packing-list/packing-list.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { DeliveryReceiptsModule } from './delivery-receipts/delivery-receipts.mo
     CustomersModule,
     InvoiceModule,
     DeliveryReceiptsModule,
+    PackingListModule,
   ],
   controllers: [AppController],
   providers: [AppService],
