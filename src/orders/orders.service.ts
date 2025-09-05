@@ -151,9 +151,49 @@ export class OrdersService {
   }
 
   private readonly salesOrderHistorySheet = 'Sales Order History!A:I';
+  private readonly salesInvoiceSheet = 'Sales Invoice!A:K';
 
   async serveOrder(orderId: string, serveData: ServeOrderDto) {
-    const rows = serveData.items.map(item => [
+  try {
+    console.log('Incoming serveData:', serveData);
+    // -------------------------------
+    // 1) Update Orders sheet status
+    // -------------------------------
+    const ordersHeader = await this.sheetsService.getData(
+      this.spreadsheetId,
+      `${this.sheetName}!1:1`, // adjust to your actual Orders sheet name
+    );
+    const headers = ordersHeader?.[0] || [];
+    const orderIdCol = headers.indexOf('orderID');
+    const statusCol = headers.indexOf('status');
+
+    if (orderIdCol === -1 || statusCol === -1) {
+      throw new Error('Orders sheet must have "orderId" and "status" columns');
+    }
+
+    const orderRows = await this.sheetsService.getData(
+      this.spreadsheetId,
+      `${this.sheetName}!A2:Z`
+    );
+    const foundRowIndex = orderRows.findIndex(
+      row => (row[orderIdCol] || '').toString().trim() === orderId
+    );
+    if (foundRowIndex !== -1) {
+      const sheetRow = foundRowIndex + 2; // offset for header
+      const statusColLetter = String.fromCharCode(65 + statusCol); // A=65
+      const statusCell = `${statusColLetter}${sheetRow}`;
+      await this.sheetsService.updateCell(
+        this.spreadsheetId,
+        this.sheetName,
+        statusCell,
+        'Served'
+      );
+    }
+
+    // -------------------------------
+    // 2) Append to Sales Order History
+    // -------------------------------
+    const historyRows = serveData.items.map(item => [
       serveData.date,
       orderId,
       serveData.customerName,
@@ -168,10 +208,46 @@ export class OrdersService {
     await this.sheetsService.appendData(
       this.spreadsheetId,
       this.salesOrderHistorySheet,
-      rows
+      historyRows
     );
 
-    return { message: 'Order served & history logged', rowsLogged: rows.length };
+    // -------------------------------
+    // 3) Append to Sales Invoice (status Pending)
+    // -------------------------------
+    const invoiceId = `INV-${orderId}-${Date.now()}`; // simple unique ID
+    const invoiceRows = serveData.items.map(item => [
+      invoiceId,
+      serveData.date,
+      serveData.customerName,
+      serveData.customerAddress || '',
+      serveData.customerNumber || '',
+      'Pending',
+      item.itemName,
+      item.quantityServed ?? item.quantityOrdered,
+      item.price,
+      item.price * (item.quantityServed ?? item.quantityOrdered),
+      serveData.salesAgent || '',
+    ]);
+
+    await this.sheetsService.appendData(
+      this.spreadsheetId,
+      this.salesInvoiceSheet,
+      invoiceRows
+    );
+
+    return {
+      message: 'Order served, history logged, invoice created',
+      rowsLogged: {
+        history: historyRows.length,
+        invoice: invoiceRows.length,
+      },
+      invoiceId,
+    };
+  } catch (err) {
+    console.error('serveOrder error:', err);
+    throw err; // rethrow so NestJS still returns 500
   }
+}
+
 
 }

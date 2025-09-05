@@ -1,8 +1,8 @@
-// src/orders/dto/serve-order.dto.ts
+// serve-order.dto.ts
 import { IsString, IsArray, ValidateNested, IsNumber } from 'class-validator';
 import { Type } from 'class-transformer';
 
-export class ServeOrderItemDto {
+class ServeItemDto {
   @IsString()
   itemName: string;
 
@@ -21,16 +21,22 @@ export class ServeOrderItemDto {
 
 export class ServeOrderDto {
   @IsString()
-  orderId: string;
-
-  @IsString()
   date: string;
 
   @IsString()
   customerName: string;
 
+  @IsString()
+  customerAddress: string;   // ✅ new
+
+  @IsString()
+  customerNumber: string;    // ✅ new
+
+  @IsString()
+  salesAgent: string;        // ✅ new
+
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => ServeOrderItemDto)
-  items: ServeOrderItemDto[];
+  @Type(() => ServeItemDto)
+  items: ServeItemDto[];
 }

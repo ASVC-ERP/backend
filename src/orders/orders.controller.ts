@@ -29,8 +29,8 @@ export class OrdersController {
     return this.ordersService.update(id, dto);
   }
 
-  @Patch(':orderId/serve')
-  async serveOrder(@Param('orderId') orderId: string, @Body() serveData: ServeOrderDto) {
+  @Patch(':orderID/serve')
+  async serveOrder(@Param('orderID') orderId: string, @Body() serveData: ServeOrderDto) {
     return this.ordersService.serveOrder(orderId, serveData);
   }
 }
