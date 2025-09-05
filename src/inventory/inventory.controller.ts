@@ -43,7 +43,7 @@ export class InventoryController {
   @Get('sales-order-history')
   async getSalesOrderHistory(@Query('itemName') itemName: string) {
     const spreadsheetId = '1868A0REbI30r4r_wmBKcD4YI0UhrB2CjS8FJ8jplWAI';
-    const sheetName = 'Sales Order';
+    const sheetName = 'Sales Order History';
     const columnHeader = 'itemName'; 
 
     return this.inventoryService.findRowsAsObjectsByColumnHeader(spreadsheetId,

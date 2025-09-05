@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException} from '@nestjs/common';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
+import { ServeOrderDto } from './dto/serve-order.dto';
 import { SheetsService } from '../sheets/sheets.service';
 
 export type Order = CreateOrderDto;
@@ -147,6 +148,30 @@ export class OrdersService {
       message: `Order ${orderId} updated successfully`,
       updatedItems: dto.orderedItems.length,
     };
+  }
+
+  private readonly salesOrderHistorySheet = 'Sales Order History!A:I';
+
+  async serveOrder(orderId: string, serveData: ServeOrderDto) {
+    const rows = serveData.items.map(item => [
+      serveData.date,
+      orderId,
+      serveData.customerName,
+      item.price,
+      item.itemName,
+      item.quantityOrdered,
+      item.quantityServed,
+      item.quantityUnserved,
+      item.price * item.quantityOrdered,
+    ]);
+
+    await this.sheetsService.appendData(
+      this.spreadsheetId,
+      this.salesOrderHistorySheet,
+      rows
+    );
+
+    return { message: 'Order served & history logged', rowsLogged: rows.length };
   }
 
 }
