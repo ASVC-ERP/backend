@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Body, Param } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, Param, Query } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
@@ -30,7 +30,17 @@ export class OrdersController {
   }
 
   @Patch(':orderID/serve')
-  async serveOrder(@Param('orderID') orderId: string, @Body() serveData: ServeOrderDto) {
-    return this.ordersService.serveOrder(orderId, serveData);
+  async serveOrder(@Param('orderID') orderId: string, @Body() serveData: ServeOrderDto, @Query('role') role: string) {
+    return this.ordersService.serveOrder(orderId, serveData, role);
+  }
+
+  @Post('serve-approved')
+  async serveApprovedOrders(@Body() { orderIds }: { orderIds: string[] }) {
+    return this.ordersService.serveApprovedOrders(orderIds);
+  }
+
+  @Get('sales-orders/by-status')
+  async getSalesOrdersByStatus(@Query('status') status: string) {
+    return this.ordersService.getSalesOrdersByStatus(status);
   }
 }
