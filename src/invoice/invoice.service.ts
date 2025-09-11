@@ -118,4 +118,30 @@ export class InvoiceService {
     if (!invoice) throw new Error(`Invoice ${invoiceID} not found`);
     return invoice;
   }
+
+  async updateStatus(invoiceID: string, newStatus: string): Promise<void> {
+    const data = await this.sheetsService.getData(this.spreadsheetId, this.range);
+
+    if (!data) return;
+
+    // Find all rows with the given invoiceID
+    const rowsToUpdate: number[] = [];
+    data.forEach((row, index) => {
+      if (row[0] === invoiceID) {
+        // index + 2 → because data starts from row 2 (A2:K)
+        rowsToUpdate.push(index + 2);
+      }
+    });
+
+    if (rowsToUpdate.length === 0) {
+      throw new Error(`Invoice ${invoiceID} not found in sheet`);
+    }
+
+    // Update the "status" column (column F → index 6, but 1-based in A1 notation)
+    for (const rowIndex of rowsToUpdate) {
+      const statusRange = `${this.sheetName}!F${rowIndex}`;
+      await this.sheetsService.updateData(this.spreadsheetId, statusRange, [[newStatus]]);
+    }
+  }
+
 }

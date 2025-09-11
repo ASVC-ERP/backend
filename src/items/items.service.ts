@@ -119,19 +119,9 @@ export class ItemsService {
     } 
   }
 
-/*
-  async search(query: string) {
-    const data = await this.sheetsService.searchInventory(this.spreadsheetId, this.range);
+  async addItems(items: { itemCode: string; itemName: string }[]) {
+    const values = items.map((item) => [item.itemCode, item.itemName]);
 
-    console.log('🔍 Raw data from Sheets:', data);
-
-    for (const item of data) {
-      console.log('🔎 itemName:', item['itemName']);
-    }
-
-    return data.filter(item =>
-      (item['itemName'] || '').toLowerCase().includes(query.toLowerCase())
-    );
+    await this.sheetsService.appendData(this.spreadsheetId, 'Inventory!A:B', values);
   }
-*/
 }

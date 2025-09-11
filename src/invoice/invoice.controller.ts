@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Query, Param } from '@nestjs/common';
+import { Controller, Get, Post, Put, Body, Query, Param } from '@nestjs/common';
 import { InvoiceService, Invoice } from './invoice.service';
 import { OrdersService } from '../orders/orders.service';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
@@ -9,6 +9,15 @@ export class InvoiceController {
     private readonly invoiceService: InvoiceService,
     private readonly ordersService: OrdersService,
   ) {}
+
+  @Put(':id/status')
+  async updateStatus(
+    @Param('id') invoiceID: string,
+    @Body('status') status: string,
+  ) {
+    await this.invoiceService.updateStatus(invoiceID, status);
+    return { success: true, invoiceID, status };
+  }
 
   @Post(':orderId/invoice')
   async invoiceOrder(@Param('orderId') orderId: string) {
