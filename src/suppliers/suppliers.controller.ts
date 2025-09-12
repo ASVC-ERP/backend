@@ -1,5 +1,5 @@
 // suppliers.controller.ts
-import { Controller, Get, Post, Put, Param, NotFoundException, Body } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Param, NotFoundException, Body } from '@nestjs/common';
 import { SheetsService } from '../sheets/sheets.service';
 
 @Controller('suppliers')
@@ -50,5 +50,18 @@ export class SuppliersController {
     }
 
     return { message: 'Supplier updated successfully.' };
+  }
+
+  // DELETE
+  @Delete(':id')
+  async deleteSupplier(@Param('id') supplierId: string) {
+    const rows = await this.sheetsService.getData(this.spreadsheetId, this.range);
+    const rowIndex = rows.findIndex(row => row[0] === supplierId);
+    if (rowIndex === -1) throw new NotFoundException(`Supplier with ID "${supplierId}" not found.`);
+
+    const rowNumber = rowIndex + 2; 
+    await this.sheetsService.clearRow(this.spreadsheetId, this.sheetName, rowNumber);
+
+    return { message: 'Supplier deleted successfully.' };
   }
 }

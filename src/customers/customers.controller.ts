@@ -1,6 +1,7 @@
-import { Controller, Get, Post, Body, Query } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Query, Param } from '@nestjs/common';
 import { CustomersService, Customer } from './customers.service';
 import { AddCustomerDto } from './dto/add-customer.dto';
+import { UpdateCustomerDto } from './dto/update-customer.dto';
 
 @Controller('customers')
 export class CustomersController {
@@ -23,4 +24,19 @@ export class CustomersController {
   async search(@Query('query') query: string): Promise<Customer[]> {
     return this.customersService.search(query);
   }
+
+  @Put(':id')
+  async update(
+    @Param('id') id: string,
+    @Body() dto: UpdateCustomerDto
+  ): Promise<Customer> {
+    return this.customersService.update(id, dto);
+  }
+
+  @Delete(':id')
+  async remove(@Param('id') id: string) {
+    await this.customersService.delete(id);
+    return { message: `Customer ${id} deleted successfully` };
+  }
+
 }

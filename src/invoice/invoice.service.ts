@@ -144,4 +144,37 @@ export class InvoiceService {
     }
   }
 
+  async deleteInvoice(invoiceID: string): Promise<void> {
+    const data = await this.sheetsService.getData(this.spreadsheetId, this.range);
+    if (!data) return;
+
+    // Find all rows with the given invoiceID
+    const rowsToDelete: number[] = [];
+    const itemsToReturn: { itemName: string; quantity: number }[] = [];
+
+    data.forEach((row, index) => {
+      if (row[0] === invoiceID) {
+        rowsToDelete.push(index + 2); // +2 because A2:K
+        if (row[6] && row[7]) { // itemName and quantity columns
+          itemsToReturn.push({ itemName: row[6], quantity: Number(row[7]) });
+        }
+      }
+    });
+
+    if (rowsToDelete.length === 0) {
+      throw new Error(`Invoice ${invoiceID} not found in sheet`);
+    }
+
+    // 1️⃣ Return items to stock
+    for (const item of itemsToReturn) {
+      await this.sheetsService.updateInventoryStock(this.spreadsheetId, 'Inventory', item.itemName, item.quantity);
+    }
+    console.log('Items returned to stock:', itemsToReturn);
+    console.log('Switching back to ', this.sheetName, ' sheet');
+    console.log('Rows to delete for invoiceID', invoiceID, ':', rowsToDelete);
+    for (let i = rowsToDelete.length - 1; i >= 0; i--) {
+      await this.sheetsService.deleteRowByName(this.spreadsheetId, this.sheetName, rowsToDelete[i]);
+    }
+  }
+
 }

@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { AddCustomerDto } from './dto/add-customer.dto';
+import { UpdateCustomerDto } from './dto/update-customer.dto';
 import { SheetsService } from '../sheets/sheets.service';
 
 export type Customer = {
@@ -75,5 +76,44 @@ export class CustomersService {
     return data.filter((c) =>
       (c.customerName || '').toLowerCase().includes(query.toLowerCase()),
     );
+  }
+
+  async update(customerID: string, dto: UpdateCustomerDto): Promise<Customer> {
+    const data = await this.sheetsService.getData(this.spreadsheetId, this.range);
+
+    const rowIndex = data.findIndex((row) => row[0] === customerID);
+    if (rowIndex === -1) throw new Error('Customer not found');
+
+    const row = data[rowIndex];
+
+    // Update values if provided
+    row[1] = dto.customerName ?? row[1];
+    row[2] = dto.customerContact ?? row[2];
+    row[3] = dto.customerAddress ?? row[3];
+
+    // SheetsService may need full range like 'Customer!A{rowIndex+2}:D{rowIndex+2}'
+    const updateRange = `${this.sheetName}!A${rowIndex + 2}:D${rowIndex + 2}`;
+    await this.sheetsService.updateData(this.spreadsheetId, updateRange, [row]);
+
+    return {
+      customerID: row[0],
+      customerName: row[1],
+      customerContact: row[2],
+      customerAddress: row[3],
+    };
+  }
+
+  async delete(customerID: string): Promise<void> {
+    // Fetch all customer rows
+    const data = await this.sheetsService.getData(this.spreadsheetId, this.range);
+
+    // Find the index of the customer to delete
+    const rowIndex = data.findIndex(row => row[0] === customerID);
+    if (rowIndex === -1) {
+      throw new Error(`Customer with ID ${customerID} not found`);
+    } 
+
+    // Delete the row (add 2 because your range starts at A2)
+    await this.sheetsService.deleteRowByName(this.spreadsheetId, this.sheetName, rowIndex + 2);
   }
 }

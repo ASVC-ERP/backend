@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Body, Query, Param } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Query, Param } from '@nestjs/common';
 import { InvoiceService, Invoice } from './invoice.service';
 import { OrdersService } from '../orders/orders.service';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
@@ -34,5 +34,11 @@ export class InvoiceController {
   @Get('search')
   async search(@Query('query') query: string): Promise<Invoice[]> {
     return this.invoiceService.search(query);
+  }
+
+  @Delete(':id')
+  async delete(@Param('id') invoiceID: string) {
+    await this.invoiceService.deleteInvoice(invoiceID);
+    return { success: true, invoiceID, message: 'Invoice deleted and stock updated' };
   }
 }

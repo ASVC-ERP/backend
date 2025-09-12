@@ -20,6 +20,17 @@ export class SheetsService implements OnModuleInit {
       auth: authClient,
     });
   }
+
+  // Helper: get sheetId from sheet name
+  private async getSheetId(spreadsheetId: string, sheetName: string): Promise<number> {
+    const res = await this.sheetsClient.spreadsheets.get({ spreadsheetId });
+    const sheet = res.data.sheets?.find(s => s.properties?.title === sheetName);
+    if (!sheet || !sheet.properties?.sheetId) {
+      throw new Error(`Sheet "${sheetName}" not found`);
+    }
+    return sheet.properties.sheetId;
+  }
+
   async getData(spreadsheetId: string, range: string): Promise<any[]> {
     const res = await this.sheetsClient.spreadsheets.values.get({
       spreadsheetId,
@@ -35,6 +46,28 @@ export class SheetsService implements OnModuleInit {
     await this.sheetsClient.spreadsheets.values.clear({
       spreadsheetId,
       range,
+    });
+  }
+
+  // Delete row by name
+  async deleteRowByName(spreadsheetId: string, sheetName: string, rowNumber: number) {
+    const sheetId = await this.getSheetId(spreadsheetId, sheetName);
+    await this.sheetsClient.spreadsheets.batchUpdate({
+      spreadsheetId,
+      requestBody: {
+        requests: [
+          {
+            deleteDimension: {
+              range: {
+                sheetId,
+                dimension: 'ROWS',
+                startIndex: rowNumber - 1, // zero-based
+                endIndex: rowNumber,       // exclusive
+              },
+            },
+          },
+        ],
+      },
     });
   }
 
@@ -57,12 +90,16 @@ export class SheetsService implements OnModuleInit {
 
   // 🔥 OPTIONAL: Update specific rows instead of full clear/append
   async updateData(spreadsheetId: string, range: string, values: any[][]) {
-    await this.sheetsClient.spreadsheets.values.update({
+    console.log('Updating spreadsheet:', spreadsheetId);
+    console.log('Range:', range);
+    console.log('Values:', values);
+    const result = await this.sheetsClient.spreadsheets.values.update({
       spreadsheetId,
       range,
       valueInputOption: "USER_ENTERED",
       requestBody: { values },
     });
+    console.log('Update response:', result.data);
   }
 
   // ✅ Update one row at a specific row number
@@ -105,5 +142,41 @@ export class SheetsService implements OnModuleInit {
     );
 
     return items;
+  }
+
+  async updateInventoryStock(
+    spreadsheetId: string,
+    sheetName: string,
+    itemName: string,
+    quantityToAdd: number
+  ): Promise<void> {
+    const range = `${sheetName}!A2:K`;
+    const data = await this.getData(spreadsheetId, range);
+
+    if (!data) {
+      throw new Error('Inventory sheet is empty or could not fetch data.');
+    }
+
+    console.log('Updating stock for item:', itemName, 'by quantity:', quantityToAdd);
+    console.log('Current inventory data:', data);
+
+    let found = false;
+
+    for (let i = 0; i < data.length; i++) {
+      const row = data[i];
+      if (row[1]?.toString().trim().toLowerCase() === itemName.trim().toLowerCase()) {
+        const currentStock = Number(row[4] ?? 0);
+        const newStock = currentStock + quantityToAdd;
+
+        const stockCell = `${sheetName}!E${i + 2}`;
+        await this.updateData(spreadsheetId, stockCell, [[newStock]]);
+        found = true;
+        break;
+      }
+    }
+
+    if (!found) {
+      throw new Error(`Item "${itemName}" not found in inventory sheet "${sheetName}".`);
+    }
   }
 }
