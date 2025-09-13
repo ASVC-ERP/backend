@@ -22,9 +22,15 @@ export class SheetsService implements OnModuleInit {
   }
 
   // Helper: get sheetId from sheet name
-  private async getSheetId(spreadsheetId: string, sheetName: string): Promise<number> {
+  private async getSheetId(
+    spreadsheetId: string,
+    sheetName: string,
+  ): Promise<number> {
     const res = await this.sheetsClient.spreadsheets.get({ spreadsheetId });
-    const sheet = res.data.sheets?.find(s => s.properties?.title === sheetName);
+    const sheet = res.data.sheets?.find(
+      (s) => s.properties?.title === sheetName,
+    );
+
     if (!sheet || !sheet.properties?.sheetId) {
       throw new Error(`Sheet "${sheetName}" not found`);
     }
@@ -50,7 +56,11 @@ export class SheetsService implements OnModuleInit {
   }
 
   // Delete row by name
-  async deleteRowByName(spreadsheetId: string, sheetName: string, rowNumber: number) {
+  async deleteRowByName(
+    spreadsheetId: string,
+    sheetName: string,
+    rowNumber: number,
+  ) {
     const sheetId = await this.getSheetId(spreadsheetId, sheetName);
     await this.sheetsClient.spreadsheets.batchUpdate({
       spreadsheetId,
@@ -62,7 +72,7 @@ export class SheetsService implements OnModuleInit {
                 sheetId,
                 dimension: 'ROWS',
                 startIndex: rowNumber - 1, // zero-based
-                endIndex: rowNumber,       // exclusive
+                endIndex: rowNumber, // exclusive
               },
             },
           },
@@ -71,7 +81,11 @@ export class SheetsService implements OnModuleInit {
     });
   }
 
-  async appendData(spreadsheetId: string, range: string, values: any[][]): Promise<void> {
+  async appendData(
+    spreadsheetId: string,
+    range: string,
+    values: any[][],
+  ): Promise<void> {
     await this.sheetsClient.spreadsheets.values.append({
       spreadsheetId,
       range,
@@ -80,7 +94,7 @@ export class SheetsService implements OnModuleInit {
     });
   }
 
- // 🔥 NEW: Clear a range
+  // 🔥 NEW: Clear a range
   async clear(spreadsheetId: string, range: string) {
     await this.sheetsClient.spreadsheets.values.clear({
       spreadsheetId,
@@ -96,14 +110,19 @@ export class SheetsService implements OnModuleInit {
     const result = await this.sheetsClient.spreadsheets.values.update({
       spreadsheetId,
       range,
-      valueInputOption: "USER_ENTERED",
+      valueInputOption: 'USER_ENTERED',
       requestBody: { values },
     });
     console.log('Update response:', result.data);
   }
 
   // ✅ Update one row at a specific row number
-  async updateRow(spreadsheetId: string, sheetName: string, rowNumber: number, values: any[]) {
+  async updateRow(
+    spreadsheetId: string,
+    sheetName: string,
+    rowNumber: number,
+    values: any[],
+  ) {
     const range = `${sheetName}!A${rowNumber}:K${rowNumber}`; // A–K columns
     await this.sheetsClient.spreadsheets.values.update({
       spreadsheetId,
@@ -113,7 +132,12 @@ export class SheetsService implements OnModuleInit {
     });
   }
 
-  async updateCell(spreadsheetId: string, sheetName: string, cell: string, newValue: any): Promise<void> {
+  async updateCell(
+    spreadsheetId: string,
+    sheetName: string,
+    cell: string,
+    newValue: any,
+  ): Promise<void> {
     const range = `${sheetName}!${cell}`;
 
     await this.sheetsClient.spreadsheets.values.update({
@@ -134,11 +158,11 @@ export class SheetsService implements OnModuleInit {
 
     const rows = res.data.values || [];
     const headers = rows[0];
-    const items = rows.slice(1).map(row =>
+    const items = rows.slice(1).map((row) =>
       headers.reduce((acc, header, i) => {
         acc[header] = row[i];
         return acc;
-      }, {})
+      }, {}),
     );
 
     return items;
@@ -148,7 +172,7 @@ export class SheetsService implements OnModuleInit {
     spreadsheetId: string,
     sheetName: string,
     itemName: string,
-    quantityToAdd: number
+    quantityToAdd: number,
   ): Promise<void> {
     const range = `${sheetName}!A2:K`;
     const data = await this.getData(spreadsheetId, range);
@@ -157,14 +181,22 @@ export class SheetsService implements OnModuleInit {
       throw new Error('Inventory sheet is empty or could not fetch data.');
     }
 
-    console.log('Updating stock for item:', itemName, 'by quantity:', quantityToAdd);
+    console.log(
+      'Updating stock for item:',
+      itemName,
+      'by quantity:',
+      quantityToAdd,
+    );
     console.log('Current inventory data:', data);
 
     let found = false;
 
     for (let i = 0; i < data.length; i++) {
       const row = data[i];
-      if (row[1]?.toString().trim().toLowerCase() === itemName.trim().toLowerCase()) {
+      if (
+        row[1]?.toString().trim().toLowerCase() ===
+        itemName.trim().toLowerCase()
+      ) {
         const currentStock = Number(row[4] ?? 0);
         const newStock = currentStock + quantityToAdd;
 
@@ -176,7 +208,37 @@ export class SheetsService implements OnModuleInit {
     }
 
     if (!found) {
-      throw new Error(`Item "${itemName}" not found in inventory sheet "${sheetName}".`);
+      throw new Error(
+        `Item "${itemName}" not found in inventory sheet "${sheetName}".`,
+      );
     }
+  }
+
+  async deleteRow(spreadsheetId: string, sheetName: string, rowIndex: number) {
+    if (!this.sheetsClient) {
+      throw new Error('Sheets client not initialized');
+    }
+
+    // Get sheetId using your helper
+    const sheetId = await this.getSheetId(spreadsheetId, sheetName);
+
+    // Delete the row
+    await this.sheetsClient.spreadsheets.batchUpdate({
+      spreadsheetId,
+      requestBody: {
+        requests: [
+          {
+            deleteDimension: {
+              range: {
+                sheetId,
+                dimension: 'ROWS',
+                startIndex: rowIndex, // 0-indexed
+                endIndex: rowIndex + 1, // delete only this row
+              },
+            },
+          },
+        ],
+      },
+    });
   }
 }
