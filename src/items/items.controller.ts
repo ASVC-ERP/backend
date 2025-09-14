@@ -12,7 +12,7 @@ export class ItemsController {
 
   private spreadsheetId = '1868A0REbI30r4r_wmBKcD4YI0UhrB2CjS8FJ8jplWAI';
   private sheetName = 'Inventory';
-  private range = `${this.sheetName}!A2:K`;
+  private range = `${this.sheetName}!A2:P`;
   constructor(private readonly itemsService: ItemsService, private readonly sheetsService: SheetsService) {}
 
   @Post()

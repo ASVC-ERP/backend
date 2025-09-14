@@ -8,7 +8,7 @@ export type Items = CreateItemDto;
 export class ItemsService {
   private spreadsheetId = '1868A0REbI30r4r_wmBKcD4YI0UhrB2CjS8FJ8jplWAI'; // Replace with your actual spreadsheet ID
   private sheetName = 'Inventory';
-  private range = `${this.sheetName}!A2:K`;
+  private range = `${this.sheetName}!A2:P`;
 
   constructor(private readonly sheetsService: SheetsService) {}
 
@@ -68,7 +68,13 @@ export class ItemsService {
         price3: Number(row[9]),
         price4: Number(row[10]),
       },
+      partNum: row[11],
+      interNum: row[12],
+      unit: row[13],
+      model: row[14],
+      category: row[15],
     }));
+    console.log('Fetched items:', items);
 
     if (search) {
       return items.filter(
