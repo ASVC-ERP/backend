@@ -8,7 +8,7 @@ export type Items = CreateItemDto;
 export class ItemsService {
   private spreadsheetId = '1868A0REbI30r4r_wmBKcD4YI0UhrB2CjS8FJ8jplWAI'; // Replace with your actual spreadsheet ID
   private sheetName = 'Inventory';
-  private range = `${this.sheetName}!A2:P`;
+  private range = `${this.sheetName}!A2:O`;
 
   constructor(private readonly sheetsService: SheetsService) {}
 
@@ -72,7 +72,6 @@ export class ItemsService {
       interNum: row[12],
       unit: row[13],
       model: row[14],
-      category: row[15],
     }));
     console.log('Fetched items:', items);
 
@@ -100,45 +99,58 @@ export class ItemsService {
     for (let i = 0; i < data.length; i++) {
       const row = data[i];
       if (row[0] === itemCode) {
-        const currentStock = Number(row[4]) || 0;
+        // itemCode is column A
+        const currentStock = Number(row[5]) || 0; // stock is column F
         const newStock = currentStock + quantityToAdd;
 
+        // Calculate unit cost based on new stock
         const newUnitCost = quantityToAdd
           ? convertedGrossPrice / quantityToAdd
           : 0;
 
-        // Calculate prices
-        const price1 = newUnitCost * 1.5; // 50% markup
-        const price2 = newUnitCost * 1.4; // 40% markup
-        const price3 = newUnitCost * 1.3; // 30% markup
+        // Update prices with your markups
+        const price1 = (newUnitCost * 1.5).toFixed(2);
+        const price2 = (newUnitCost * 1.4).toFixed(2);
+        const price3 = (newUnitCost * 1.3).toFixed(2);
 
-        const rowNumber = i + 2;
+        const rowNumber = i + 2; // sheet rows start at 2
 
+        // Update sheet cells
         await this.sheetsService.updateCell(
           this.spreadsheetId,
           this.sheetName,
-          `E${rowNumber}`,
+          `F${rowNumber}`,
           newStock,
-        );
-
-        // Update prices
+        ); // stock
         await this.sheetsService.updateCell(
           this.spreadsheetId,
           this.sheetName,
           `G${rowNumber}`,
-          price1.toFixed(2),
-        );
+          newUnitCost.toFixed(2),
+        ); // cost
         await this.sheetsService.updateCell(
           this.spreadsheetId,
           this.sheetName,
           `H${rowNumber}`,
-          price2.toFixed(2),
+          price1,
         );
         await this.sheetsService.updateCell(
           this.spreadsheetId,
           this.sheetName,
           `I${rowNumber}`,
-          price3.toFixed(2),
+          price2,
+        );
+        await this.sheetsService.updateCell(
+          this.spreadsheetId,
+          this.sheetName,
+          `J${rowNumber}`,
+          price3,
+        );
+
+        console.log(
+          `[Inventory] Updated ${itemCode}: stock=${newStock}, cost=${newUnitCost.toFixed(
+            2,
+          )}, prices=[${price1},${price2},${price3}]`,
         );
 
         break;
@@ -155,27 +167,50 @@ export class ItemsService {
     for (let i = 0; i < data.length; i++) {
       const row = data[i];
       if (row[0] === itemCode) {
-        const currentStock = Number(row[4]) || 0;
+        // itemCode is column A
+        const currentStock = Number(row[5]) || 0; // stock is column F
+
         if (currentStock < quantityToRemove) {
-          throw new Error(
+          throw new BadRequestException(
             `Cannot remove ${quantityToRemove} units. Only ${currentStock} in stock.`,
           );
         }
 
         const newStock = currentStock - quantityToRemove;
         const rowNumber = i + 2;
-        const cell = `E${rowNumber}`;
 
         await this.sheetsService.updateCell(
           this.spreadsheetId,
           this.sheetName,
-          cell,
+          `F${rowNumber}`,
           newStock,
+        );
+
+        console.log(
+          `[Inventory] Removed ${quantityToRemove} from ${itemCode}, new stock: ${newStock}`,
         );
         break;
       }
     }
   }
+
+  async getPrices(itemCode: string) {
+  const data = await this.sheetsService.getData(this.spreadsheetId, this.range);
+
+  for (let i = 0; i < data.length; i++) {
+    const row = data[i];
+    if (row[0] === itemCode) {
+      // Columns: H=price1, I=price2, J=price3
+      return {
+        price1: Number(row[7]),
+        price2: Number(row[8]),
+        price3: Number(row[9]),
+      };
+    }
+  }
+
+  throw new NotFoundException(`Item with code "${itemCode}" not found.`);
+}
 
   async addItems(items: { itemCode: string; itemName: string }[]) {
     const values = items.map((item) => [item.itemCode, item.itemName]);
