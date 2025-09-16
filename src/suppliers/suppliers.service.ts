@@ -103,7 +103,7 @@ export class SuppliersService {
     await this.sheetsService.deleteRowByName(
       this.spreadsheetId,
       this.sheetName,
-      rowIndex + 1,
+      rowIndex + 2,
     );
 
     return { message: 'Supplier deleted successfully.' };
