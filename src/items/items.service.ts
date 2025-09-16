@@ -27,6 +27,7 @@ export class ItemsService {
     const newItem: Items = { ...item };
 
     console.log('Creating item:', newItem);
+
     // Push to Google Sheets
     const row = [
       [
@@ -36,6 +37,7 @@ export class ItemsService {
         newItem.origin,
         newItem.minStock,
         newItem.stock,
+        newItem.cost,
         newItem.price.price1,
         newItem.price.price2,
         newItem.price.price3,
@@ -67,6 +69,7 @@ export class ItemsService {
       origin: row[3],
       minStock: Number(row[4]),
       stock: Number(row[5]),
+      cost: Number(row[6]),
       price: {
         price1: Number(row[7]),
         price2: Number(row[8]),
@@ -219,12 +222,40 @@ export class ItemsService {
     throw new NotFoundException(`Item with code "${itemCode}" not found.`);
   }
 
-  async addItems(items: { itemCode: string; itemName: string }[]) {
-    const values = items.map((item) => [item.itemCode, item.itemName]);
+  async addItems(
+    items: {
+      itemCode: string;
+      itemName: string;
+      brand: string;
+      origin: string;
+      minStock: number;
+      partNum: string;
+      interNum: string;
+      unit: string;
+      model: string;
+    }[],
+  ) {
+    const values = items.map((item) => [
+      item.itemCode, // col 1
+      item.itemName, // col 2
+      item.brand, // col 3
+      item.origin, // col 4
+      item.minStock, // col 5
+      '',
+      '',
+      '',
+      '',
+      '',
+      '', // col 6–11 (stock, cost, price1–4)
+      item.partNum, // col 12
+      item.interNum, // col 13
+      item.unit, // col 14
+      item.model, // col 15
+    ]);
 
     await this.sheetsService.appendData(
       this.spreadsheetId,
-      'Inventory!A:B',
+      'Inventory!A:O', // covers all 15 columns
       values,
     );
   }

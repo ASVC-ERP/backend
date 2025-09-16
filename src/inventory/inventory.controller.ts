@@ -126,8 +126,9 @@ export class InventoryController {
 
     return this.inventoryService.updateInventoryItem(
       spreadsheetId,
-      body.itemName,
+      body.itemCode,
       {
+        itemName: body.itemName,
         brand: body.brand,
         minStock: body.minStock,
         partNum: body.partNum,

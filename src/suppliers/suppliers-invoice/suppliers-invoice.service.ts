@@ -54,10 +54,8 @@ export class SuppliersInvoiceService {
       }
     }
 
-    const invoiceID = await this.generateInvoiceNumber();
-
     const values = dto.items.map((item) => [
-      invoiceID,
+      dto.invoiceID,
       dto.poNum,
       dto.purchaseDate,
       item.itemName,
@@ -86,7 +84,7 @@ export class SuppliersInvoiceService {
       }
     }
 
-    return { message: 'Invoice added successfully', invoiceID };
+    return { message: 'Invoice added successfully', invoiceID: dto.invoiceID };
   }
 
   async findAll() {

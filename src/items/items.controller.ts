@@ -1,7 +1,16 @@
-import { Controller, Get, Post, Body, Query, Param, UseInterceptors, UploadedFile, } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Query,
+  Param,
+  UseInterceptors,
+  UploadedFile,
+} from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import * as ExcelJS from 'exceljs';
-import { Express } from "express";
+import { Express } from 'express';
 import { Multer } from 'multer';
 import { ItemsService } from './items.service';
 import { CreateItemDto } from './dto/create-item.dto';
@@ -9,15 +18,17 @@ import { SheetsService } from '../sheets/sheets.service';
 
 @Controller('items')
 export class ItemsController {
-
   private spreadsheetId = '1868A0REbI30r4r_wmBKcD4YI0UhrB2CjS8FJ8jplWAI';
   private sheetName = 'Inventory';
   private range = `${this.sheetName}!A2:P`;
-  constructor(private readonly itemsService: ItemsService, private readonly sheetsService: SheetsService) {}
+  constructor(
+    private readonly itemsService: ItemsService,
+    private readonly sheetsService: SheetsService,
+  ) {}
 
   @Post()
   create(@Body() dto: CreateItemDto) {
-    console.log("📥 Received item from frontend:", dto);
+    console.log('📥 Received item from frontend:', dto);
     return this.itemsService.create(dto);
   }
 
@@ -33,35 +44,80 @@ export class ItemsController {
     await workbook.xlsx.load(file.buffer as any);
 
     const worksheet = workbook.worksheets[0];
-    const items: { itemCode: string; itemName: string }[] = [];
+    const items: {
+      itemCode: string;
+      itemName: string;
+      brand: string;
+      origin: string;
+      minStock: number;
+      partNum: string;
+      interNum: string;
+      unit: string;
+      model: string;
+    }[] = [];
 
     worksheet.eachRow((row, rowNumber) => {
       if (rowNumber === 1) return; // skip header
       const itemCode = row.getCell(1).value;
       const itemName = row.getCell(2).value;
+      const brand = row.getCell(3).value;
+      const origin = row.getCell(4).value;
+      const minStock = row.getCell(5).value;
+      //skip 6-11: stock, cost, price1-4
+      const partNum = row.getCell(12).value;
+      const interNum = row.getCell(13).value;
+      const unit = row.getCell(14).value;
+      const model = row.getCell(15).value;
 
       if (itemCode && itemName) {
         items.push({
           itemCode: String(itemCode),
           itemName: String(itemName),
+          brand: String(brand),
+          origin: String(origin),
+          minStock: Number(minStock || 0),
+          //skip stock, cost, price1-4
+          partNum: String(partNum),
+          interNum: String(interNum ),
+          unit: String(unit),
+          model: String(model),
         });
       }
     });
 
     // Check for duplicates
-    const existingRows = await this.sheetsService.getData(this.spreadsheetId, 'Inventory!A:A');
+    const existingRows = await this.sheetsService.getData(
+      this.spreadsheetId,
+      'Inventory!A:A',
+    );
     const existingCodes = existingRows.flat().map(String);
-    const newItems = items.filter(item => !existingCodes.includes(item.itemCode));
+    const newItems = items.filter(
+      (item) => !existingCodes.includes(item.itemCode),
+    );
 
     if (newItems.length === 0) {
       return { message: 'No new items to import', count: 0 };
     }
 
-    const values = newItems.map(item => [item.itemCode, item.itemName]);
+    const values = newItems.map((item) => [
+      item.itemCode,
+      item.itemName,
+      item.brand,
+      item.origin,
+      item.minStock,
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      item.partNum,
+      item.interNum,
+      item.unit,
+      item.model,
+    ]);
     await this.itemsService.addItems(newItems);
 
     return { message: 'Import successful', count: newItems.length };
   }
-  
-
 }

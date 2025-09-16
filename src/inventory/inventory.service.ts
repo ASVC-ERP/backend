@@ -287,8 +287,9 @@ async updateItemPrice(
 
 async updateInventoryItem(
   spreadsheetId: string,
-  itemName: string,
+  itemCode: string,
   updates: {
+    itemName?: string;
     brand?: string;
     minStock?: string | number;
     partNum?: string;
@@ -309,18 +310,18 @@ async updateInventoryItem(
   }
 
   const headers = rows[0];
-  const itemNameIndex = headers.indexOf('itemName');
+  const itemCodeIndex = headers.indexOf('itemCode');
 
-  if (itemNameIndex === -1) {
+  if (itemCodeIndex === -1) {
     throw new Error(`Column "itemName" not found in Inventory sheet`);
   }
 
   // Step 2: Locate row with matching itemName
   const rowIndex = rows.findIndex(
-    (row, i) => i > 0 && row[itemNameIndex] === itemName,
+    (row, i) => i > 0 && row[itemCodeIndex] === itemCode,
   );
   if (rowIndex === -1) {
-    throw new Error(`Item "${itemName}" not found in Inventory`);
+    throw new Error(`Item "${itemCode}" not found in Inventory`);
   }
 
   // Step 3: Map update fields to their column indexes
@@ -353,7 +354,7 @@ async updateInventoryItem(
   await Promise.all(updatePromises);
 
   return {
-    message: `Item "${itemName}" updated successfully`,
+    message: `Item "${itemCode}" updated successfully`,
     updatedFields,
   };
 }

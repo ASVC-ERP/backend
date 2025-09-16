@@ -42,6 +42,9 @@ export class CreateInvoiceDto {
   @IsString()
   poNum: string;
 
+  @IsString()
+  invoiceID: string;
+
   @IsDateString()
   purchaseDate: Date; // e.g. "2025-08-21"
 

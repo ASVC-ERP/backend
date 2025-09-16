@@ -40,6 +40,10 @@ export class CreateItemDto {
   @IsNumber()
   stock: number;
 
+  @Type(() => Number)
+  @IsNumber()
+  cost: number;
+
   @ValidateNested()
   @Type(() => PriceDto)
   price: PriceDto;

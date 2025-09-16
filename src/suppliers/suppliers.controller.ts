@@ -21,16 +21,16 @@ export class SuppliersController {
 
   @Post()
   async addSupplier(
-    @Body() body: { id: string; name: string; address: string; currency: string },
+    @Body() body: { id: string; name: string; address: string; currency: string, number: string },
   ) {
-    const { id, name, address, currency } = body;
-    return this.suppliersService.addSupplier(id, name, address, currency);
+    const { id, name, address, currency, number } = body;
+    return this.suppliersService.addSupplier(id, name, address, currency, number);
   }
 
   @Put(':id')
   async updateSupplier(
     @Param('id') supplierId: string,
-    @Body() body: { newId?: string; name?: string; address?: string; currency?: string },
+    @Body() body: { newId?: string; name?: string; address?: string; currency?: string, number?: string },
   ) {
     return this.suppliersService.updateSupplier(supplierId, body);
   }
