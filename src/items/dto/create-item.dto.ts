@@ -43,4 +43,16 @@ export class CreateItemDto {
   @ValidateNested()
   @Type(() => PriceDto)
   price: PriceDto;
+
+  @IsString()
+  unit: string;
+
+  @IsString()
+  partNum: string;
+
+  @IsString()
+  interNum: string;
+
+  @IsString()
+  model: string;
 }

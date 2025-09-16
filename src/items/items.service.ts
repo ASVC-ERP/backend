@@ -8,7 +8,7 @@ export type Items = CreateItemDto;
 export class ItemsService {
   private spreadsheetId = '1868A0REbI30r4r_wmBKcD4YI0UhrB2CjS8FJ8jplWAI'; // Replace with your actual spreadsheet ID
   private sheetName = 'Inventory';
-  private range = `${this.sheetName}!A2:O`;
+  private range = `${this.sheetName}!A2:P`;
 
   constructor(private readonly sheetsService: SheetsService) {}
 
@@ -26,6 +26,7 @@ export class ItemsService {
 
     const newItem: Items = { ...item };
 
+    console.log('Creating item:', newItem);
     // Push to Google Sheets
     const row = [
       [
@@ -34,6 +35,10 @@ export class ItemsService {
         newItem.brand,
         newItem.origin,
         newItem.minStock,
+        newItem.partNum,
+        newItem.interNum,
+        newItem.unit,
+        newItem.model,
         newItem.stock,
         newItem.price.price1,
         newItem.price.price2,
@@ -73,7 +78,6 @@ export class ItemsService {
       unit: row[13],
       model: row[14],
     }));
-    console.log('Fetched items:', items);
 
     if (search) {
       return items.filter(
@@ -195,22 +199,25 @@ export class ItemsService {
   }
 
   async getPrices(itemCode: string) {
-  const data = await this.sheetsService.getData(this.spreadsheetId, this.range);
+    const data = await this.sheetsService.getData(
+      this.spreadsheetId,
+      this.range,
+    );
 
-  for (let i = 0; i < data.length; i++) {
-    const row = data[i];
-    if (row[0] === itemCode) {
-      // Columns: H=price1, I=price2, J=price3
-      return {
-        price1: Number(row[7]),
-        price2: Number(row[8]),
-        price3: Number(row[9]),
-      };
+    for (let i = 0; i < data.length; i++) {
+      const row = data[i];
+      if (row[0] === itemCode) {
+        // Columns: H=price1, I=price2, J=price3
+        return {
+          price1: Number(row[7]),
+          price2: Number(row[8]),
+          price3: Number(row[9]),
+        };
+      }
     }
-  }
 
-  throw new NotFoundException(`Item with code "${itemCode}" not found.`);
-}
+    throw new NotFoundException(`Item with code "${itemCode}" not found.`);
+  }
 
   async addItems(items: { itemCode: string; itemName: string }[]) {
     const values = items.map((item) => [item.itemCode, item.itemName]);

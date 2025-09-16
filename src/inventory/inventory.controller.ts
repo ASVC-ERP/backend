@@ -134,7 +134,7 @@ export class InventoryController {
         interNum: body.interNum,
         unit: body.unit,
         model: body.model,
-        category: body.category,
+        origin: body.origin,
       },
     );
   }

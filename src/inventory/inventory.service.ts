@@ -295,7 +295,7 @@ async updateInventoryItem(
     interNum?: string;
     unit?: string;
     model?: string;
-    category?: string;
+    origin?: string;
   },
 ) {
   // Step 1: Fetch sheet data
