@@ -49,13 +49,13 @@ export class CreateItemDto {
   price: PriceDto;
 
   @IsString()
-  unit: string;
-
-  @IsString()
   partNum: string;
 
   @IsString()
   interNum: string;
+
+  @IsString()
+  unit: string;
 
   @IsString()
   model: string;
