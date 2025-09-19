@@ -6,6 +6,8 @@ import {
   Get,
   Query,
   Patch,
+  Delete,
+  Param,
 } from '@nestjs/common';
 import { InventoryService } from './inventory.service';
 import { ItemsService } from '../items/items.service';

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { CreateItemDto } from './dto/create-item.dto';
 import { SheetsService } from '../sheets/sheets.service';
 
@@ -258,5 +258,34 @@ export class ItemsService {
       'Inventory!A:O', // covers all 15 columns
       values,
     );
+  }
+
+  async deleteItem(itemCode: string) {
+    if (!itemCode) {
+      throw new BadRequestException('Item code is required.');
+    }
+
+    const rows = await this.sheetsService.getData(
+      this.spreadsheetId,
+      this.range,
+    );
+
+    // Find the row with matching itemCode (col A = row[0])
+    const rowIndex = rows.findIndex(
+      (row) => row[0]?.toString() === itemCode.toString(),
+    );
+
+    if (rowIndex === -1) {
+      throw new NotFoundException(`Item with code "${itemCode}" not found.`);
+    }
+
+    // +2 because rows start at A2, and Google Sheets rows are 1-based
+    await this.sheetsService.deleteRowByName(
+      this.spreadsheetId,
+      this.sheetName,
+      rowIndex + 2,
+    );
+
+    return { message: `Item "${itemCode}" deleted successfully.` };
   }
 }

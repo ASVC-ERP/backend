@@ -7,6 +7,7 @@ import {
   Param,
   UseInterceptors,
   UploadedFile,
+  Delete,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import * as ExcelJS from 'exceljs';
@@ -78,7 +79,7 @@ export class ItemsController {
           minStock: Number(minStock || 0),
           //skip stock, cost, price1-4
           partNum: String(partNum),
-          interNum: String(interNum ),
+          interNum: String(interNum),
           unit: String(unit),
           model: String(model),
         });
@@ -119,5 +120,10 @@ export class ItemsController {
     await this.itemsService.addItems(newItems);
 
     return { message: 'Import successful', count: newItems.length };
+  }
+
+  @Delete(':id')
+  async deleteItem(@Param('id') itemCode: string) {
+    return this.itemsService.deleteItem(itemCode);
   }
 }
