@@ -66,8 +66,8 @@ async generateReceiptA(@Body() data: any, @Res() res: Response) {
 
   // Totals
   const netTotal = (data.items || []).reduce((sum, item) => sum + ((item.quantity || 0) * (item.price || 0)), 0);
-  const vat = netTotal*0.12;
-  const vatSales = netTotal - vat;
+  const vatSales = netTotal/1.12;
+  const vat = netTotal - vatSales;
   y += 20;
   doc.font('Helvetica').text(`Vatable Sales: `, colX.price, y, { width: 120 });
   doc.text(`${vatSales.toFixed(2)}`, colX.amount, y,);
