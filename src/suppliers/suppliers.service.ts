@@ -7,7 +7,7 @@ export class SuppliersService {
   private spreadsheetId =
     '1868A0REbI30r4r_wmBKcD4YI0UhrB2CjS8FJ8jplWAI';
   private sheetName = 'Supplier List';
-  private range = `${this.sheetName}!A2:E`;
+  private range = `${this.sheetName}!A2:F`; // ✅ include 6 columns
 
   constructor(private readonly sheetsService: SheetsService) {}
 
@@ -16,19 +16,40 @@ export class SuppliersService {
       this.spreadsheetId,
       this.range,
     );
-    return data.map(([id, name, address, currency, number]) => ({ id, name, address, currency, number }));
+    return data.map(([id, name, address, currency, number, tin]) => ({
+      id,
+      name,
+      address: address || '',
+      currency: currency || '',
+      number: number || '',
+      tin: tin || '',
+    }));
   }
 
-  async addSupplier(id: string, name: string, address: string, currency: string, number: string) {
+  async addSupplier(
+    id: string,
+    name: string,
+    address: string,
+    currency: string,
+    number: string,
+    tin: string,
+  ) {
     await this.sheetsService.appendData(this.spreadsheetId, this.range, [
-      [id, name, address, currency, number],
+      [id, name, address, currency, number, tin],
     ]);
     return { message: 'Supplier added successfully' };
   }
 
   async updateSupplier(
     supplierId: string,
-    body: { newId?: string; name?: string; address?: string; currency?: string, number?: string },
+    body: {
+      newId?: string;
+      name?: string;
+      address?: string;
+      currency?: string;
+      number?: string;
+      tin?: string; // ✅ added TIN support
+    },
   ) {
     const rows = await this.sheetsService.getData(
       this.spreadsheetId,
@@ -82,6 +103,14 @@ export class SuppliersService {
         this.sheetName,
         `E${rowNumber}`,
         body.number,
+      );
+    }
+    if (body.tin) {
+      await this.sheetsService.updateCell(
+        this.spreadsheetId,
+        this.sheetName,
+        `F${rowNumber}`,
+        body.tin,
       );
     }
 

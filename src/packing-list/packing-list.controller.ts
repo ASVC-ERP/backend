@@ -40,9 +40,10 @@ export class PackingListController {
     let total = 0;
     (data.orderedItems || []).forEach(item => {
       doc.text(item.quantity.toString(), colX.qty, y);
-      doc.text(item.itemName, colX.desc, y, { width: 200 });
+      doc.text(item.itemName, colX.desc, y, { width: 500 });
+      doc.text(item.itemName, colX.desc, y, { width: 500 });
 
-      y += 20;
+      y += 30;
     });
     doc.end();
   }

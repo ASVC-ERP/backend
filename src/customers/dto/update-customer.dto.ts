@@ -12,4 +12,8 @@ export class UpdateCustomerDto {
   @IsOptional()
   @IsString()
   customerAddress?: string;
+
+  @IsOptional()
+  @IsString()
+  customerTIN?: string;
 }

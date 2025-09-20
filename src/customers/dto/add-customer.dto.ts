@@ -10,4 +10,7 @@ export class AddCustomerDto {
 
   @IsString()
   customerAddress: string;
+
+  @IsString()
+  customerTIN: string;
 }

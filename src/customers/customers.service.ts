@@ -8,13 +8,14 @@ export type Customer = {
   customerName: string;
   customerContact: string;
   customerAddress: string;
+  customerTIN: string;
 };
 
 @Injectable()
 export class CustomersService {
   private spreadsheetId = '1868A0REbI30r4r_wmBKcD4YI0UhrB2CjS8FJ8jplWAI'; // Replace with your actual spreadsheet ID
   private sheetName = 'Customer';
-  private range = `${this.sheetName}!A2:D`;
+  private range = `${this.sheetName}!A2:E`; // Added column E for TIN
 
   constructor(private readonly sheetsService: SheetsService) {}
 
@@ -43,6 +44,7 @@ export class CustomersService {
         customer.customerName,
         customer.customerContact,
         customer.customerAddress,
+        customer.customerTIN, // Added TIN
       ],
     ];
 
@@ -53,6 +55,7 @@ export class CustomersService {
       customerName: customer.customerName,
       customerContact: customer.customerContact,
       customerAddress: customer.customerAddress,
+      customerTIN: customer.customerTIN,
     };
   }
 
@@ -62,11 +65,12 @@ export class CustomersService {
       this.range,
     );
 
-    return data.map((row, index) => ({
+    return data.map((row) => ({
       customerID: row[0],
       customerName: row[1],
       customerContact: row[2],
       customerAddress: row[3],
+      customerTIN: row[4] || '', // Added TIN
     }));
   }
 
@@ -90,9 +94,10 @@ export class CustomersService {
     row[1] = dto.customerName ?? row[1];
     row[2] = dto.customerContact ?? row[2];
     row[3] = dto.customerAddress ?? row[3];
+    row[4] = dto.customerTIN ?? row[4]; // Update TIN
 
-    // SheetsService may need full range like 'Customer!A{rowIndex+2}:D{rowIndex+2}'
-    const updateRange = `${this.sheetName}!A${rowIndex + 2}:D${rowIndex + 2}`;
+    // SheetsService may need full range like 'Customer!A{rowIndex+2}:E{rowIndex+2}'
+    const updateRange = `${this.sheetName}!A${rowIndex + 2}:E${rowIndex + 2}`;
     await this.sheetsService.updateData(this.spreadsheetId, updateRange, [row]);
 
     return {
@@ -100,6 +105,7 @@ export class CustomersService {
       customerName: row[1],
       customerContact: row[2],
       customerAddress: row[3],
+      customerTIN: row[4],
     };
   }
 
