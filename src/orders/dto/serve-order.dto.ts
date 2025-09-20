@@ -1,5 +1,11 @@
 // serve-order.dto.ts
-import { IsString, IsArray, ValidateNested, IsNumber } from 'class-validator';
+import { 
+  IsString, 
+  IsArray, 
+  ValidateNested, 
+  IsNumber, 
+  IsOptional 
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 class ServeItemDto {
@@ -17,6 +23,10 @@ class ServeItemDto {
 
   @IsNumber()
   quantityUnserved: number;
+
+  @IsOptional()
+  @IsNumber()
+  discount?: number;   // 👈 optional per-item discount (if needed)
 }
 
 export class ServeOrderDto {
@@ -26,17 +36,25 @@ export class ServeOrderDto {
   @IsString()
   customerName: string;
 
+  @IsOptional()
   @IsString()
-  customerAddress: string;   // ✅ new
+  customerTIN?: string;  // 👈 keep same as CreateOrderDto
 
   @IsString()
-  customerNumber: string;    // ✅ new
+  customerAddress: string;
 
   @IsString()
-  salesAgent: string;        // ✅ new
+  customerNumber: string;
+
+  @IsString()
+  salesAgent: string;
 
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => ServeItemDto)
   items: ServeItemDto[];
+
+  @IsOptional()
+  @IsNumber()
+  totalPrice?: number;   // 👈 computed total (optional)
 }

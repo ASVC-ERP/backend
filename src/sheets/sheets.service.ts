@@ -200,7 +200,7 @@ export class SheetsService implements OnModuleInit {
         const currentStock = Number(row[4] ?? 0);
         const newStock = currentStock + quantityToAdd;
 
-        const stockCell = `${sheetName}!E${i + 2}`;
+        const stockCell = `${sheetName}!F${i + 2}`;
         await this.updateData(spreadsheetId, stockCell, [[newStock]]);
         found = true;
         break;

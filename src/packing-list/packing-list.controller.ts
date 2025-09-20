@@ -88,7 +88,7 @@ export class PackingListController {
 
     itemsList.forEach(item => {
       doc.text(item.quantity?.toString() || '0', colX.qty, y);
-      doc.text(item.itemName || '', colX.desc, y, { width: 200 });
+      doc.text(item.itemName || '', colX.desc, y, { width: 600 });
 
       y += 20;
     });

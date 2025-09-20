@@ -42,9 +42,9 @@ async generateReceiptA(@Body() data: any, @Res() res: Response) {
 
   // Table
   const tableTop = 200;
-  const colX = { qty: 50, unit: 100, desc: 160, price: 320, discount: 400, amount: 480 };
+  const colX = { qty: 50, unit: 75, desc: 110, price: 350, discount: 420, amount: 480 };
   doc.font('Helvetica-Bold');
-  ['Quantity','Unit','Description','Unit Price','Discount','Amount'].forEach((h,i) => {
+  ['Qty','Unit','Description','Price','Discount','Amount'].forEach((h,i) => {
     const x = Object.values(colX)[i];
     doc.text(h, x, tableTop);
   });
@@ -58,9 +58,9 @@ async generateReceiptA(@Body() data: any, @Res() res: Response) {
     doc.text(item.quantity?.toString() || '', colX.qty, y);
     doc.text(item.unit || '', colX.unit, y);
     doc.text(item.itemName || '', colX.desc, y, { width: 220 });
-    doc.text((item.price || 0).toFixed(2), colX.price, y, { width: 60, align: 'right' });
-    doc.text((item.discount || 0).toFixed(2), colX.discount, y, { width: 60, align: 'right' });
-    doc.text(amount.toFixed(2), colX.amount, y, { width: 70, align: 'right' });
+    doc.text((item.price || 0).toFixed(2), colX.price, y );
+    doc.text((item.discount || 0).toFixed(2), colX.discount, y, );
+    doc.text(amount.toFixed(2), colX.amount, y,);
     y += 20;
   });
 
@@ -70,13 +70,13 @@ async generateReceiptA(@Body() data: any, @Res() res: Response) {
   const vatSales = netTotal - vat;
   y += 20;
   doc.font('Helvetica').text(`Vatable Sales: `, colX.price, y, { width: 120 });
-  doc.text(`${vatSales.toFixed(2)}`, colX.amount, y, { width: 70, align: 'right' });
+  doc.text(`${vatSales.toFixed(2)}`, colX.amount, y,);
   y += 20;
   doc.text(`VAT(12%): `, colX.price, y, { width: 60 });
-  doc.text(`${vat.toFixed(2)}`, colX.amount, y, { width: 70, align: 'right' });
+  doc.text(`${vat.toFixed(2)}`, colX.amount, y,);
   y += 20;
   doc.font('Helvetica-Bold').text(`Total Amount Due: `, colX.price, y, { width: 120 });
-  doc.text(`${(netTotal).toFixed(2)}`, colX.amount, y, { width: 70, align: 'right' });
+  doc.text(`${(netTotal).toFixed(2)}`, colX.amount, y,);
 
   // Footer
   y += 50;
@@ -84,6 +84,12 @@ async generateReceiptA(@Body() data: any, @Res() res: Response) {
   doc.text('By: ___________________________', colX.price, y + 20);
   doc.text('        Signature Over Printed Name', colX.price, y + 30);
   doc.text('Date: ________________________', colX.price, y + 50);
+
+  doc.fontSize(8)
+    .font('Helvetica')
+    .text('Sales Invoice to Follow', 0, doc.page.height - 50, {
+      align: 'center',
+    });
 
   doc.end();
 }

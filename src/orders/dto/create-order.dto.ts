@@ -1,4 +1,12 @@
-import { IsString, IsEnum, IsNumber, ValidateNested, IsArray } from "class-validator";
+// create-order.dto.ts
+import { 
+  IsString, 
+  IsEnum, 
+  IsNumber, 
+  ValidateNested, 
+  IsArray, 
+  IsOptional 
+} from "class-validator";
 import { Type } from "class-transformer";
 
 export enum OrderStatus {
@@ -36,6 +44,10 @@ export class CreateOrderDto {
   @IsString()
   customerNumber: string;
 
+  @IsOptional()
+  @IsString()
+  customerTIN?: string;   // 👈 added
+
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => OrderedItemDto)
@@ -43,6 +55,10 @@ export class CreateOrderDto {
 
   @IsNumber()
   totalPrice: number;
+
+  @IsOptional()
+  @IsNumber()
+  discount?: number;      // 👈 added
 
   @IsString()
   salesAgent: string;
