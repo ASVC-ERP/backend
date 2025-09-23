@@ -1,7 +1,7 @@
 // General Module for the NestJS application
 import { Module } from '@nestjs/common';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
 import { SheetsModule } from './sheets/sheets.module';
 import { OrdersModule } from './orders/orders.module';
 import { ItemsModule } from './items/items.module';
@@ -16,6 +16,12 @@ import { PackingListModule } from './packing-list/packing-list.module';
 
 @Module({
   imports: [
+
+    ServeStaticModule.forRoot({
+      rootPath: join(__dirname, '..', 'public'),  // contains react build
+      //exclude: ['/api*'], // 👈 don’t override backend API routes
+    }),
+
     SheetsModule,
     OrdersModule, 
     ItemsModule,
@@ -27,8 +33,6 @@ import { PackingListModule } from './packing-list/packing-list.module';
     InvoiceModule,
     DeliveryReceiptsModule,
     PackingListModule,
-  ],
-  controllers: [AppController],
-  providers: [AppService],
+  ]
 })
 export class AppModule {}

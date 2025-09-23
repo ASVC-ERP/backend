@@ -175,6 +175,8 @@ export class InvoiceService {
     for (let i = rowsToDelete.length - 1; i >= 0; i--) {
       await this.sheetsService.deleteRowByName(this.spreadsheetId, this.sheetName, rowsToDelete[i]);
     }
+
+    console.log(`Invoice ${invoiceID} deleted successfully`);
   }
 
 }
