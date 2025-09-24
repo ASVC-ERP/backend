@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { ServeOrderDto } from './dto/serve-order.dto';
@@ -8,11 +9,18 @@ export type Order = CreateOrderDto;
 
 @Injectable()
 export class OrdersService {
-  private spreadsheetId = '1868A0REbI30r4r_wmBKcD4YI0UhrB2CjS8FJ8jplWAI';
+  private spreadsheetId: string;
+  
+  constructor(private readonly sheetsService: SheetsService,
+    private readonly configService: ConfigService,
+  ) {
+    const id = this.configService.get<string>('SPREADSHEET_ID');
+    if (!id) { throw new Error('SPREADSHEET_ID is not set in environment variables'); }
+    this.spreadsheetId = id;
+  }
+
   private sheetName = 'Sales Order';
   private range = `${this.sheetName}!A2:N`;
-
-  constructor(private readonly sheetsService: SheetsService) {}
 
   async create(order: CreateOrderDto): Promise<Order> {
     const existingRows = await this.sheetsService.getData(this.spreadsheetId, this.range);

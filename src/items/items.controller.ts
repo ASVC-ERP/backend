@@ -1,14 +1,5 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Query,
-  Param,
-  UseInterceptors,
-  UploadedFile,
-  Delete,
-} from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, Param, UseInterceptors, UploadedFile, Delete, } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { FileInterceptor } from '@nestjs/platform-express';
 import * as ExcelJS from 'exceljs';
 import { Express } from 'express';
@@ -19,13 +10,19 @@ import { SheetsService } from '../sheets/sheets.service';
 
 @Controller('items')
 export class ItemsController {
-  private spreadsheetId = '1868A0REbI30r4r_wmBKcD4YI0UhrB2CjS8FJ8jplWAI';
   private sheetName = 'Inventory';
   private range = `${this.sheetName}!A2:P`;
-  constructor(
+
+  private spreadsheetId: string;
+  
+  constructor(private readonly sheetsService: SheetsService,
     private readonly itemsService: ItemsService,
-    private readonly sheetsService: SheetsService,
-  ) {}
+    private readonly configService: ConfigService,
+  ) {
+    const id = this.configService.get<string>('SPREADSHEET_ID');
+    if (!id) { throw new Error('SPREADSHEET_ID is not set in environment variables'); }
+    this.spreadsheetId = id;
+  }
 
   @Post()
   create(@Body() dto: CreateItemDto) {

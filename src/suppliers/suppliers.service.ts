@@ -1,15 +1,21 @@
 // src/suppliers/suppliers.service.ts
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { SheetsService } from '../sheets/sheets.service';
 
 @Injectable()
 export class SuppliersService {
-  private spreadsheetId =
-    '1868A0REbI30r4r_wmBKcD4YI0UhrB2CjS8FJ8jplWAI';
+  private spreadsheetId: string;
+    
+  constructor(private readonly sheetsService: SheetsService,
+    private readonly configService: ConfigService,
+  ) {
+    const id = this.configService.get<string>('SPREADSHEET_ID');
+    if (!id) { throw new Error('SPREADSHEET_ID is not set in environment variables'); }
+    this.spreadsheetId = id;
+  }
   private sheetName = 'Supplier List';
   private range = `${this.sheetName}!A2:F`; // ✅ include 6 columns
-
-  constructor(private readonly sheetsService: SheetsService) {}
 
   async getSuppliers() {
     const data = await this.sheetsService.getData(

@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CreateItemDto } from './dto/create-item.dto';
 import { SheetsService } from '../sheets/sheets.service';
 
@@ -6,11 +7,18 @@ export type Items = CreateItemDto;
 
 @Injectable()
 export class ItemsService {
-  private spreadsheetId = '1868A0REbI30r4r_wmBKcD4YI0UhrB2CjS8FJ8jplWAI'; // Replace with your actual spreadsheet ID
+  private spreadsheetId: string;
+
+  constructor(private readonly sheetsService: SheetsService,
+    private readonly configService: ConfigService,
+  ) {
+    const id = this.configService.get<string>('SPREADSHEET_ID');
+    if (!id) { throw new Error('SPREADSHEET_ID is not set in environment variables'); }
+    this.spreadsheetId = id;
+  }
+
   private sheetName = 'Inventory';
   private range = `${this.sheetName}!A2:P`;
-
-  constructor(private readonly sheetsService: SheetsService) {}
 
   async create(item: CreateItemDto): Promise<Items> {
     const existingRows = await this.sheetsService.getData(

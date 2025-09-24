@@ -1,11 +1,19 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { SheetsService } from '../sheets/sheets.service';
 
 @Injectable()
 export class InventoryService {
-  constructor(private readonly sheetsService: SheetsService) {}
+  private spreadsheetId: string;
+  
+  constructor(private readonly sheetsService: SheetsService,
+    private readonly configService: ConfigService,
+  ) {
+    const id = this.configService.get<string>('SPREADSHEET_ID');
+    if (!id) { throw new Error('SPREADSHEET_ID is not set in environment variables'); }
+    this.spreadsheetId = id;
+  }
 
-  private spreadsheetId = '1868A0REbI30r4r_wmBKcD4YI0UhrB2CjS8FJ8jplWAI';
   private itemSheet = 'Item List';
   private itemRange = `${this.itemSheet}!A2:I`; // Adjust based on columns
   private supplierSheet = 'Supplier List';

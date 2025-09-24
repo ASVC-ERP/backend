@@ -1,5 +1,6 @@
 // General Module for the NestJS application
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { SheetsModule } from './sheets/sheets.module';
@@ -20,6 +21,10 @@ import { PackingListModule } from './packing-list/packing-list.module';
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', 'public'),  // contains react build
       //exclude: ['/api*'], // 👈 don’t override backend API routes
+    }),
+
+    ConfigModule.forRoot({
+      isGlobal: true, // makes env variables available everywhere
     }),
 
     SheetsModule,

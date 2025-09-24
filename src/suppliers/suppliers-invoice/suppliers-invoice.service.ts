@@ -1,18 +1,23 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { SheetsService } from '../../sheets/sheets.service';
 import { ItemsService } from '../../items/items.service';
 import { CreateInvoiceDto } from './dto/suppliers-invoice.dto';
 
 @Injectable()
 export class SuppliersInvoiceService {
-  private spreadsheetId = '1868A0REbI30r4r_wmBKcD4YI0UhrB2CjS8FJ8jplWAI';
   private sheetName = 'Supplier Invoice';
   private range = `${this.sheetName}!A2:M`;
-
-  constructor(
-    private readonly sheetsService: SheetsService,
+  private spreadsheetId: string;
+    
+  constructor(private readonly sheetsService: SheetsService,
     private readonly itemsService: ItemsService,
-  ) {}
+    private readonly configService: ConfigService,
+  ) {
+    const id = this.configService.get<string>('SPREADSHEET_ID');
+    if (!id) { throw new Error('SPREADSHEET_ID is not set in environment variables'); }
+    this.spreadsheetId = id;
+  }
 
   /** Generate dynamic invoice number */
   private async generateInvoiceNumber(): Promise<string> {

@@ -1,14 +1,22 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { SheetsService } from '../sheets/sheets.service';
 import { LoginDto } from './dto/login.dto';
 
 @Injectable()
 export class AuthService {
-  private spreadsheetId = '1868A0REbI30r4r_wmBKcD4YI0UhrB2CjS8FJ8jplWAI'; // same ID
   private sheetName = 'Users';
   private range = `${this.sheetName}!A1:F`; // skip header row
 
-  constructor(private readonly sheetsService: SheetsService) {}
+  private spreadsheetId: string;
+  
+  constructor(private readonly sheetsService: SheetsService,
+    private readonly configService: ConfigService,
+  ) {
+    const id = this.configService.get<string>('SPREADSHEET_ID');
+    if (!id) { throw new Error('SPREADSHEET_ID is not set in environment variables'); }
+    this.spreadsheetId = id;
+  }
 
   async validateUser({ username, password }: LoginDto) {
     const data = await this.sheetsService.getData(this.spreadsheetId, this.range);

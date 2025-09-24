@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { SheetsService } from '../sheets/sheets.service';
 
 export interface InvoiceItem {
@@ -21,11 +22,18 @@ export class Invoice {
 
 @Injectable()
 export class InvoiceService {
-  private spreadsheetId = '1868A0REbI30r4r_wmBKcD4YI0UhrB2CjS8FJ8jplWAI';
   private sheetName = 'Sales Invoice';
   private range = `${this.sheetName}!A2:K`;
 
-  constructor(private readonly sheetsService: SheetsService) {}
+  private spreadsheetId: string;
+  
+  constructor(private readonly sheetsService: SheetsService,
+    private readonly configService: ConfigService,
+  ) {
+    const id = this.configService.get<string>('SPREADSHEET_ID');
+    if (!id) { throw new Error('SPREADSHEET_ID is not set in environment variables'); }
+    this.spreadsheetId = id;
+  }
 
   // Fetch all invoices grouped by invoiceID
   async findAll(): Promise<Invoice[]> {

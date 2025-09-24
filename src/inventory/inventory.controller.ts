@@ -1,23 +1,22 @@
-import {
-  Controller,
-  Post,
-  Body,
-  BadRequestException,
-  Get,
-  Query,
-  Patch,
-  Delete,
-  Param,
-} from '@nestjs/common';
+import { Controller, Post, Body, BadRequestException, Get, Query, Patch, Delete, Param, } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InventoryService } from './inventory.service';
 import { ItemsService } from '../items/items.service';
 
 @Controller('inventory')
 export class InventoryController {
+
+  private spreadsheetId: string;
+  
   constructor(
+    private readonly configService: ConfigService,
     private readonly inventoryService: InventoryService,
     private readonly itemsService: ItemsService,
-  ) {}
+  ) {
+    const id = this.configService.get<string>('SPREADSHEET_ID');
+    if (!id) { throw new Error('SPREADSHEET_ID is not set in environment variables'); }
+    this.spreadsheetId = id;
+  }
 
   @Post('add')
   async addInventory(@Body() body: any) {
@@ -30,13 +29,12 @@ export class InventoryController {
 
   @Get('cost-history')
   async findByHeaderObjects(@Query('itemName') itemName: string) {
-    const spreadsheetId = '1868A0REbI30r4r_wmBKcD4YI0UhrB2CjS8FJ8jplWAI';
     const supplierSheet = 'Supplier Invoice';
     const columnHeader = 'itemName';
 
     // 1. Get all supplier invoice rows for this item
     const history = await this.inventoryService.findRowsAsObjectsByColumnHeader(
-      spreadsheetId,
+      this.spreadsheetId,
       supplierSheet,
       columnHeader,
       itemName,
@@ -64,12 +62,11 @@ export class InventoryController {
 
   @Get('physical-count')
   async getPhysicalCount(@Query('itemName') itemName: string) {
-    const spreadsheetId = '1868A0REbI30r4r_wmBKcD4YI0UhrB2CjS8FJ8jplWAI';
     const sheetName = 'Physical Adjustment';
     const columnHeader = 'itemName';
 
     return this.inventoryService.findRowsAsObjectsByColumnHeader(
-      spreadsheetId,
+      this.spreadsheetId,
       sheetName,
       columnHeader,
       itemName,
@@ -78,12 +75,11 @@ export class InventoryController {
 
   @Get('sales-order-history')
   async getSalesOrderHistory(@Query('itemName') itemName: string) {
-    const spreadsheetId = '1868A0REbI30r4r_wmBKcD4YI0UhrB2CjS8FJ8jplWAI';
     const sheetName = 'Sales Order History';
     const columnHeader = 'itemName';
 
     return this.inventoryService.findRowsAsObjectsByColumnHeader(
-      spreadsheetId,
+      this.spreadsheetId,
       sheetName,
       columnHeader,
       itemName,
@@ -97,10 +93,9 @@ export class InventoryController {
     @Query('stock') stock: string,
     @Query('remarks') remarks: string,
   ) {
-    const spreadsheetId = '1868A0REbI30r4r_wmBKcD4YI0UhrB2CjS8FJ8jplWAI';
 
     return this.inventoryService.adjustStock(
-      spreadsheetId,
+      this.spreadsheetId,
       itemName,
       PIC,
       Number(stock),
@@ -113,10 +108,9 @@ export class InventoryController {
     @Query('itemName') itemName: string,
     @Query('price') price: string,
   ) {
-    const spreadsheetId = '1868A0REbI30r4r_wmBKcD4YI0UhrB2CjS8FJ8jplWAI';
 
     return this.inventoryService.updateItemPrice(
-      spreadsheetId,
+      this.spreadsheetId,
       itemName,
       Number(price),
     );
@@ -124,10 +118,9 @@ export class InventoryController {
 
   @Patch('update-inventory')
   async updateInventory(@Body() body: any) {
-    const spreadsheetId = '1868A0REbI30r4r_wmBKcD4YI0UhrB2CjS8FJ8jplWAI';
 
     return this.inventoryService.updateInventoryItem(
-      spreadsheetId,
+      this.spreadsheetId,
       body.itemCode,
       {
         itemName: body.itemName,

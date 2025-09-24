@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { AddCustomerDto } from './dto/add-customer.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
 import { SheetsService } from '../sheets/sheets.service';
@@ -13,11 +14,17 @@ export type Customer = {
 
 @Injectable()
 export class CustomersService {
-  private spreadsheetId = '1868A0REbI30r4r_wmBKcD4YI0UhrB2CjS8FJ8jplWAI'; // Replace with your actual spreadsheet ID
+  private spreadsheetId: string;
+  
+  constructor(private readonly sheetsService: SheetsService,
+    private readonly configService: ConfigService,
+  ) {
+    const id = this.configService.get<string>('SPREADSHEET_ID');
+    if (!id) { throw new Error('SPREADSHEET_ID is not set in environment variables'); }
+    this.spreadsheetId = id;
+  }
   private sheetName = 'Customer';
   private range = `${this.sheetName}!A2:E`; // Added column E for TIN
-
-  constructor(private readonly sheetsService: SheetsService) {}
 
   async create(customer: AddCustomerDto): Promise<Customer> {
     const existingRows = await this.sheetsService.getData(
