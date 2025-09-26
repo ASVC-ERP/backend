@@ -10,13 +10,13 @@ export class InvoiceController {
     private readonly ordersService: OrdersService,
   ) {}
 
-  @Put(':id/status')
-  async updateStatus(
+  @Put(':id/waybill')
+  async updateWayBill(
     @Param('id') invoiceID: string,
-    @Body('status') status: string,
+    @Body('waybillNumber') waybillNumber: string,
   ) {
-    await this.invoiceService.updateStatus(invoiceID, status);
-    return { success: true, invoiceID, status };
+    await this.invoiceService.updateWaybillNumber(invoiceID, waybillNumber);
+    return { success: true, invoiceID, waybillNumber };
   }
 
   @Post(':orderId/invoice')

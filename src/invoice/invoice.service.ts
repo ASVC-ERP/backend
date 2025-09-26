@@ -14,7 +14,7 @@ export class Invoice {
   customerName: string;
   customerAddress?: string;
   customerNumber?: string;
-  status: string;
+  waybillNumber: string;
   salesAgent?: string;
   items: InvoiceItem[];
 }
@@ -43,7 +43,7 @@ export class InvoiceService {
           customerName: row[2] ?? '-',
           customerAddress: row[3] ?? '-',
           customerNumber: row[4] ?? '-',
-          status: row[5] ?? '-',
+          waybillNumber: row[5] ?? '-',
           salesAgent: row[10] ?? '-',
           items: [],
         };
@@ -82,7 +82,7 @@ export class InvoiceService {
       order.customerName,
       order.customerAddress ?? '',
       order.customerNumber ?? '',
-      'Pending',
+      order.waybillNumber ?? '-',
       item.itemName,
       item.quantityServed ?? item.quantityOrdered ?? 0,
       item.price ?? 0,
@@ -98,7 +98,7 @@ export class InvoiceService {
       customerName: order.customerName,
       customerAddress: order.customerAddress ?? '',
       customerNumber: order.customerNumber ?? '',
-      status: 'Pending',
+      waybillNumber: order.waybillNumber ?? "",
       salesAgent: order.salesAgent ?? '',
       items: rows.map(r => ({
         itemName: r[6],
@@ -119,17 +119,15 @@ export class InvoiceService {
     return invoice;
   }
 
-  async updateStatus(invoiceID: string, newStatus: string): Promise<void> {
+  async updateWaybillNumber(invoiceID: string, newWaybillNumber: string): Promise<void> {
     const data = await this.sheetsService.getData(this.spreadsheetId, this.range);
 
     if (!data) return;
-
-    // Find all rows with the given invoiceID
     const rowsToUpdate: number[] = [];
+
     data.forEach((row, index) => {
       if (row[0] === invoiceID) {
-        // index + 2 → because data starts from row 2 (A2:K)
-        rowsToUpdate.push(index + 2);
+        rowsToUpdate.push(index + 2); // +2 because data starts from row 2 (A2:K)
       }
     });
 
@@ -137,10 +135,9 @@ export class InvoiceService {
       throw new Error(`Invoice ${invoiceID} not found in sheet`);
     }
 
-    // Update the "status" column (column F → index 6, but 1-based in A1 notation)
     for (const rowIndex of rowsToUpdate) {
-      const statusRange = `${this.sheetName}!F${rowIndex}`;
-      await this.sheetsService.updateData(this.spreadsheetId, statusRange, [[newStatus]]);
+      const waybillRange = `${this.sheetName}!F${rowIndex}`;
+      await this.sheetsService.updateData(this.spreadsheetId, waybillRange, [[newWaybillNumber]]);
     }
   }
 
