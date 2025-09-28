@@ -12,6 +12,9 @@ class ServeItemDto {
   @IsString()
   itemName: string;
 
+  @IsString()
+  itemCode?: string;
+
   @IsNumber()
   price: number;
 
@@ -27,6 +30,10 @@ class ServeItemDto {
   @IsOptional()
   @IsNumber()
   discount?: number;   // 👈 optional per-item discount (if needed)
+
+  @IsOptional()
+  @IsString()
+  unit?: string;
 }
 
 export class ServeOrderDto {

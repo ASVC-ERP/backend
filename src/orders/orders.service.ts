@@ -20,7 +20,7 @@ export class OrdersService {
   }
 
   private sheetName = 'Sales Order';
-  private range = `${this.sheetName}!A2:N`;
+  private range = `${this.sheetName}!A2:P`;
 
   async create(order: CreateOrderDto): Promise<Order> {
     const existingRows = await this.sheetsService.getData(this.spreadsheetId, this.range);
@@ -44,6 +44,9 @@ export class OrdersService {
       order.discount || 0,   // K
       order.customerTIN || '', // L
       order.salesAgent,       // M
+      '',                    // N
+      item.unit || '',       // O
+      item.itemCode,
     ]));
 
     await this.sheetsService.appendData(this.spreadsheetId, this.range, rows);
@@ -71,6 +74,7 @@ export class OrdersService {
           customerAddress: row[3],
           customerNumber: row[4],
           status: row[5],
+          customerTIN: row[11],
           salesAgent: row[12],
           orderedItems: [],
           totalPrice: Number(row[9] || 0),
@@ -83,6 +87,8 @@ export class OrdersService {
           itemName: row[6],
           quantity: Number(row[7] || 0),
           price: Number(row[8] || 0),
+          unit: row[14] || '',
+          itemCode: row[15] || '',
         });
       }
     }
@@ -105,15 +111,17 @@ export class OrdersService {
       customerName: firstRow[2],
       customerAddress: firstRow[3],
       customerNumber: firstRow[4],
-      salesAgent: firstRow[10],
-      customerTIN: firstRow[11],
       status: firstRow[5],
+      salesAgent: firstRow[12],
+      customerTIN: firstRow[11],
       totalPrice: orderRows.reduce((sum, r) => sum + Number(r[8] || 0) * Number(r[7] || 0), 0),
       orderedItems: orderRows.map(r => ({
         itemName: r[6],
         quantity: Number(r[7] || 0),
         price: Number(r[8] || 0),
         discount: Number(r[11] || 0),
+        unit: r[14] || '',
+        itemCode: r[15] || '',
       })),
     };
   }
@@ -145,10 +153,12 @@ export class OrdersService {
       item.itemName,
       item.quantity,
       item.price,
-      dto.totalPrice,
+      totalPrice,
       dto.discount ?? 0,
       dto.customerTIN ?? '',
       dto.salesAgent,
+      item.unit || '',
+      item.itemCode || '',
     ]));
 
     await this.sheetsService.clear(this.spreadsheetId, this.range);
@@ -223,6 +233,7 @@ export class OrdersService {
           customerName: orderData.customerName,
           customerAddress: orderData.customerAddress,
           customerNumber: orderData.customerNumber,
+          customerTIN: orderData.customerTIN,
           salesAgent: orderData.salesAgent,
           items: orderData.orderedItems.map(item => ({
             itemName: item.itemName,
@@ -230,6 +241,7 @@ export class OrdersService {
             quantityOrdered: item.quantity,
             quantityServed: approvalDataForOrder[item.itemName]?.quantityServed ?? 0,
             quantityUnserved: approvalDataForOrder[item.itemName]?.quantityUnserved ?? 0,
+            itemCode: item.itemCode, 
           })),
         };
         console.log(`[serveApprovedOrders] Constructed serveData for ${orderId}:`, JSON.stringify(serveData, null, 2));
@@ -409,6 +421,7 @@ export class OrdersService {
         item.quantityServed,
         item.quantityUnserved,
         item.price * item.quantityOrdered,
+        item.itemCode,
       ]);
 
       await this.sheetsService.appendData(
@@ -421,19 +434,29 @@ export class OrdersService {
       // 3) Append to Sales Invoice (status Pending)
       // -------------------------------
       const invoiceId = `INV-${orderId}-${Date.now()}`; // simple unique ID
-      const invoiceRows = serveData.items.map(item => [
-        invoiceId,
-        serveData.date,
-        serveData.customerName,
-        serveData.customerAddress || '',
-        serveData.customerNumber || '',
-        'Pending',
-        item.itemName,
-        item.quantityServed ?? item.quantityOrdered,
-        item.price,
-        item.price * (item.quantityServed ?? item.quantityOrdered),
-        serveData.salesAgent || '',
-      ]);
+      const invoiceRows = serveData.items.map(item => {
+        const quantity = item.quantityServed ?? item.quantityOrdered ?? 0;
+        const price = item.price ?? 0;
+
+        return [
+          invoiceId,                 // A: invoiceID
+          serveData.date,            // B: date
+          serveData.customerName,    // C: customerName
+          serveData.customerAddress || '', // D: customerAddress
+          serveData.customerNumber || '',  // E: customerNumber
+          '',                        // F: waybillNumber (empty at creation)
+          item.itemName || '',       // G: itemName
+          quantity,                  // H: quantity
+          price,                     // I: price
+          quantity * price,          // J: totalPrice
+          serveData.salesAgent || '',// K: salesAgent
+          serveData.customerTIN || '', // L: customerTIN
+          item.unit || '',           // M: unit
+          item.itemCode || '',
+        ];
+      });
+
+      console.log("invoiceRows: ", invoiceRows);
 
       await this.sheetsService.appendData(
         this.spreadsheetId,

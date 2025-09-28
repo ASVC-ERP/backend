@@ -14,7 +14,7 @@ export class SuppliersService {
     if (!id) { throw new Error('SPREADSHEET_ID is not set in environment variables'); }
     this.spreadsheetId = id;
   }
-  private sheetName = 'Supplier List';
+  private sheetName = 'Supplier';
   private range = `${this.sheetName}!A2:F`; // ✅ include 6 columns
 
   async getSuppliers() {

@@ -7,6 +7,7 @@ export interface InvoiceItem {
   quantity: number;
   price: number;
   totalPrice: number;
+  unit: string;
 }
 
 export class Invoice {
@@ -18,12 +19,13 @@ export class Invoice {
   waybillNumber: string;
   salesAgent?: string;
   items: InvoiceItem[];
+  customerTIN?: string;
 }
 
 @Injectable()
 export class InvoiceService {
   private sheetName = 'Sales Invoice';
-  private range = `${this.sheetName}!A2:K`;
+  private range = `${this.sheetName}!A2:M`;
 
   private spreadsheetId: string;
   
@@ -54,6 +56,7 @@ export class InvoiceService {
           waybillNumber: row[5] ?? '-',
           salesAgent: row[10] ?? '-',
           items: [],
+          customerTIN: row[11] ?? '-',
         };
       }
 
@@ -63,6 +66,7 @@ export class InvoiceService {
           quantity: Number(row[7] ?? 0),
           price: Number(row[8] ?? 0),
           totalPrice: Number(row[9] ?? 0),
+          unit: row[12] ?? '-',
         });
       }
     }
@@ -96,6 +100,8 @@ export class InvoiceService {
       item.price ?? 0,
       (item.price ?? 0) * (item.quantityServed ?? item.quantityOrdered ?? 0),
       order.salesAgent ?? '',
+      order.customerTIN,
+      item.unit,
     ]);
 
     await this.sheetsService.appendData(this.spreadsheetId, this.range, rows);
@@ -113,7 +119,9 @@ export class InvoiceService {
         quantity: r[7],
         price: r[8],
         totalPrice: r[9],
+        unit: r[12],
       })),
+      customerTIN: order.customerTIN ?? '',
     };
 
     return [invoice];

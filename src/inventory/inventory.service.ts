@@ -16,7 +16,7 @@ export class InventoryService {
 
   private itemSheet = 'Item List';
   private itemRange = `${this.itemSheet}!A2:I`; // Adjust based on columns
-  private supplierSheet = 'Supplier List';
+  private supplierSheet = 'Supplier';
   private supplierRange = `${this.supplierSheet}!A2:C`;
   private purchaseLogSheet = 'Supplier Purchases';
   private purchaseRange = `${this.purchaseLogSheet}!A2:I`;
@@ -92,7 +92,7 @@ export class InventoryService {
 
     return { success: true, message: 'Stock updated and purchase logged' };
   }
-
+/*
   async findRowsAsObjectsByColumnHeader(
     spreadsheetId: string,
     sheetName: string,
@@ -143,6 +143,67 @@ export class InventoryService {
 
     return result;
   }
+*/
+
+  async findRowsAsObjectsByColumnHeader(
+    spreadsheetId: string,
+    sheetName: string,
+    columnHeader: string,
+    value: string | number,
+  ) {
+    // 1. Get Headers from the first row
+    const headerResponse = await this.sheetsService.getData(
+      spreadsheetId,
+      `${sheetName}!1:1`,
+    );
+    const headers = headerResponse?.[0];
+
+    if (!headers || headers.length === 0) {
+      throw new Error(`No headers found in sheet "${sheetName}"`);
+    }
+
+    // 2. Find the column index for the given header
+    const columnIndex = headers.indexOf(columnHeader);
+    if (columnIndex === -1) {
+      throw new Error(
+        `Column "${columnHeader}" not found in sheet "${sheetName}"`,
+      );
+    }
+
+    // 3. Get all data rows (starting from the second row)
+    const dataRows = await this.sheetsService.getData(
+      spreadsheetId,
+      `${sheetName}!A2:Z`, // Widen range to Z to ensure all columns are fetched
+    );
+
+    if (!dataRows || dataRows.length === 0) return [];
+
+    // 🛠 4. Guard against undefined value
+    if (value === undefined || value === null) {
+      throw new Error(
+        `findRowsAsObjectsByColumnHeader: "value" is undefined or null for column "${columnHeader}"`,
+      );
+    }
+
+    const valueStr = value.toString().trim();
+
+    // 5. Filter rows and map to objects
+    const filteredRows = dataRows.filter((row) => {
+      const cellValue = row[columnIndex]?.toString().trim();
+      return cellValue === valueStr;
+    });
+
+    const result = filteredRows.map((row) => {
+      const obj: Record<string, string> = {};
+      headers.forEach((header, i) => {
+        obj[header] = row[i] ?? ''; // handle missing values
+      });
+      return obj;
+    });
+
+    return result;
+  }
+
 
   async getSheetDataAsObjects(
     spreadsheetId: string,

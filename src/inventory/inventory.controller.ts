@@ -26,23 +26,23 @@ export class InventoryController {
     }
     return result;
   }
-
+/*
   @Get('cost-history')
-  async findByHeaderObjects(@Query('itemName') itemName: string) {
+  async findByHeaderObjects(@Query('itemCode') itemCode: string) {
     const supplierSheet = 'Supplier Invoice';
-    const columnHeader = 'itemName';
+    const columnHeader = 'itemCode';
 
     // 1. Get all supplier invoice rows for this item
     const history = await this.inventoryService.findRowsAsObjectsByColumnHeader(
       this.spreadsheetId,
       supplierSheet,
       columnHeader,
-      itemName,
+      itemCode,
     );
 
     // 2. Get Inventory sheet data
     const inventory = await this.itemsService.findAll(); // returns items with price info
-    const itemInfo = inventory.find((r) => r.itemName === itemName);
+    const itemInfo = inventory.find((r) => r.itemCode === itemCode);
 
     // 3. Add prices to each history row as separate fields
     const updatedHistory = history.map((row) => {
@@ -59,30 +59,62 @@ export class InventoryController {
 
     return updatedHistory;
   }
+*/
+  @Get('cost-history')
+  async getCostHistory(@Query('itemCode') itemCode: string) {
+    if (!itemCode) {
+      throw new BadRequestException('itemCode is required');
+    }
+
+    const supplierSheet = 'Supplier Invoice';
+    const columnHeader = 'itemCode';
+
+    // 1️⃣ Fetch all supplier invoice rows for this itemCode
+    const history = await this.inventoryService.findRowsAsObjectsByColumnHeader(
+      this.spreadsheetId,
+      supplierSheet,
+      columnHeader,
+      itemCode.trim(),
+    );
+
+    // 2️⃣ Fetch full inventory to get latest price info
+    const inventory = await this.itemsService.findAll();
+    const itemInfo = inventory.find((item) => item.itemCode === itemCode.trim());
+
+    // 3️⃣ Attach price fields dynamically (if available)
+    const updatedHistory = history.map((row) => ({
+      ...row,
+      price1: itemInfo?.price?.price1 ?? null,
+      price2: itemInfo?.price?.price2 ?? null,
+      price3: itemInfo?.price?.price3 ?? null,
+    }));
+
+    return updatedHistory;
+  }
 
   @Get('physical-count')
-  async getPhysicalCount(@Query('itemName') itemName: string) {
+  async getPhysicalCount(@Query('itemCode') itemCode: string) {
     const sheetName = 'Physical Adjustment';
-    const columnHeader = 'itemName';
+    const columnHeader = 'itemCode';
 
     return this.inventoryService.findRowsAsObjectsByColumnHeader(
       this.spreadsheetId,
       sheetName,
       columnHeader,
-      itemName,
+      itemCode,
     );
   }
 
   @Get('sales-order-history')
-  async getSalesOrderHistory(@Query('itemName') itemName: string) {
+  async getSalesOrderHistory(@Query('itemCode') itemCode: string) {
     const sheetName = 'Sales Order History';
-    const columnHeader = 'itemName';
+    const columnHeader = 'itemCode';
 
     return this.inventoryService.findRowsAsObjectsByColumnHeader(
       this.spreadsheetId,
       sheetName,
       columnHeader,
-      itemName,
+      itemCode,
     );
   }
 

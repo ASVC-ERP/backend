@@ -26,6 +26,13 @@ class OrderedItemDto {
 
   @IsNumber()
   price: number;
+
+  @IsOptional()              // NEW
+  @IsString()
+  unit?: string;             // NEW
+
+  @IsString()
+  itemCode?: string;
 }
 
 export class CreateOrderDto {
