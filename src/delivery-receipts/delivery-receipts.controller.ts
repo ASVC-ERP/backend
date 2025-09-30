@@ -127,50 +127,42 @@ async generateReceiptA(@Body() data: any, @Res() res: Response) {
 
     // Customer info
     const yStart = 120;
-    doc.fontSize(10)
-        .text(`D.R.No: ${data.drNo || ''}`, 400, yStart)
-        .text(`Date: ${data.date || ''}`, 400, yStart + 15)
-        .text(`Terms: ${data.terms || ''}`, 400, yStart + 30)
-        .text(`P.O. No: ${data.poNo || ''}`, 400, yStart + 45);
+  doc.fontSize(10)
+     .text(`D.R.No: ${data.drNo || ''}`, 400, yStart)
+     .text(`Date: ${data.date || ''}`, 400, yStart + 15)
+     .text(`Terms: ${data.terms || ''}`, 400, yStart + 30)
+     .text(`P.O. No: ${data.poNo || ''}`, 400, yStart + 45);
 
-    doc.text(`SOLD TO: ${data.customerName || ''}`, 50, yStart)
-        .text(`TIN: ${data.customerTIN || ''}`, 50, yStart + 15)
-        doc.text(`Address: ${data.customerAddress || ''}`, 50, yStart + 30, {
-        width: 300, // wraps text within 300px
-        align: 'left',
-      });
-
-    // Table
-    const tableTop = 200;
-    const colX = { qty: 50, unit: 75, desc: 110, price: 350, discount: 420, amount: 480 };
-    doc.font('Helvetica-Bold');
-    ['Qty','Unit','Description','Price','Discount','Amount'].forEach((h,i) => {
-      const x = Object.values(colX)[i];
-      doc.text(h, x, tableTop);
+  doc.text(`SOLD TO: ${data.customerName || ''}`, 50, yStart)
+     .text(`TIN: ${data.customerTIN || ''}`, 50, yStart + 15)
+     doc.text(`Address: ${data.customerAddress || ''}`, 50, yStart + 30, {
+      width: 300, // wraps text within 300px
+      align: 'left',
     });
-    doc.moveTo(50, tableTop + 15).lineTo(550, tableTop + 15).stroke();
 
-    doc.font('Helvetica-Bold');
-    doc.text('Qty', colX.qty, tableTop);
-    doc.text('Unit', colX.unit, tableTop);
-    doc.text('Description', colX.desc, tableTop);
-    doc.text('Discount', colX.discount, tableTop);
-    doc.text('Amount', colX.amount, tableTop);
-    doc.moveTo(50, tableTop + 15).lineTo(550, tableTop + 15).stroke();
+  // Table
+  const tableTop = 200;
+  const colX = { qty: 50, unit: 75, desc: 110, price: 350, discount: 420, amount: 480 };
+  doc.font('Helvetica-Bold');
+  ['Qty','Unit','Description','Price','Discount','Amount'].forEach((h,i) => {
+    const x = Object.values(colX)[i];
+    doc.text(h, x, tableTop);
+  });
+  doc.moveTo(50, tableTop + 15).lineTo(550, tableTop + 15).stroke();
 
-    // Items
-    doc.font('Helvetica');
-    let y = tableTop + 25;
-    (data.items || []).forEach(item => {
-      const amount = (item.quantity || 0) * (item.price || 0);
-      doc.text(item.quantity?.toString() || '', colX.qty, y);
-      doc.text(item.unit || '', colX.unit, y);
-      doc.text(item.itemName || '', colX.desc, y, { width: 200 });
-      doc.text((item.price || 0).toFixed(2), colX.price, y, { width: 60, align: 'right' });
-      doc.text((item.discount || 0).toFixed(2), colX.discount, y, { width: 60, align: 'right' });
-      doc.text(amount.toFixed(2), colX.amount, y, { width: 70, align: 'right' });
-      y += 20;
-    });
+  // Items
+  doc.font('Helvetica');
+  let y = tableTop + 25;
+  (data.items || []).forEach(item => {
+    const amount = (item.quantity || 0) * (item.price || 0);
+    doc.text(item.quantity?.toString() || '', colX.qty, y);
+    doc.text(item.unit || '', colX.unit, y);
+    doc.text(item.itemName || '', colX.desc, y, { width: 220 });
+    doc.text((item.price || 0).toFixed(2), colX.price, y );
+    doc.text((item.discount || 0).toFixed(2), colX.discount, y, );
+    doc.text(amount.toFixed(2), colX.amount, y,);
+    y += 20;
+  });
 
     const netTotal = (data.items || []).reduce((sum, item) => sum + ((item.quantity || 0) * (item.price || 0)), 0);
     y += 20;
