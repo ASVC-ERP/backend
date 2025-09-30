@@ -24,7 +24,10 @@ export class PackingListController {
     doc.fontSize(12).text(`Order ID: ${data.orderId}`, 400, 80);
     doc.text(`Date: ${data.date || ''}`, 400, 95);
     doc.text(`Customer: ${data.customerName}`, 50, 80);
-    doc.text(`Address: ${data.customerAddress}`, 50, 95);
+    doc.text(`Address: ${data.customerAddress}`, 50, 95, {
+      width: 300, // wraps text within 300px
+      align: 'left',
+    });
     doc.text(`TIN: ${data.customerTIN}`, 50, 110);
 
     // ===== ITEMS TABLE =====
@@ -121,7 +124,10 @@ export class PackingListController {
     //doc.fontSize(12).text(`Order ID: ${data.orderId}`, 400, 120);
     doc.text(`Date: ${data.date || ''}`, 400, 120);
     doc.text(`Customer: ${data.customerName}`, 50, 120);
-    doc.text(`Address: ${data.customerAddress}`, 50, 135);
+    doc.text(`Address: ${data.customerAddress}`, 50, 135, {
+      width: 300, // wraps text within 300px
+      align: 'left',
+    });
     doc.text(`TIN: ${data.customerTIN}`, 400, 135);
 
     // ===== TABLE CONFIG =====
