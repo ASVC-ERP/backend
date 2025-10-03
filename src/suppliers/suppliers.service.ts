@@ -1,5 +1,5 @@
 // src/suppliers/suppliers.service.ts
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SheetsService } from '../sheets/sheets.service';
 
@@ -40,10 +40,38 @@ export class SuppliersService {
     number: string,
     tin: string,
   ) {
-    await this.sheetsService.appendData(this.spreadsheetId, this.range, [
-      [id, name, address, currency, number, tin],
-    ]);
-    return { message: 'Supplier added successfully' };
+    try {
+      // 1️⃣ Get existing suppliers
+      const existingRows = await this.sheetsService.getData(
+        this.spreadsheetId,
+        this.range,
+      );
+
+      // 2️⃣ Check duplicates by ID or TIN
+      const duplicate = existingRows.find(
+        (row) => row[0] === id || row[5] === tin, // adjust indices depending on your sheet structure
+      );
+
+      if (duplicate) {
+        throw new ConflictException(
+          `Supplier with ID "${id}" already exists.`,
+        );
+      }
+
+      // 3️⃣ Append new supplier
+      await this.sheetsService.appendData(this.spreadsheetId, this.range, [
+        [id, name, address, currency, number, tin],
+      ]);
+
+      return { message: 'Supplier added successfully' };
+    } catch (error) {
+      if (error instanceof ConflictException) {
+        throw error; // rethrow conflict for frontend
+      }
+
+      console.error('❌ Error adding supplier:', error);
+      throw new InternalServerErrorException('Failed to add supplier.');
+    }
   }
 
   async updateSupplier(
