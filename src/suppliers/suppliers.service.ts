@@ -1,11 +1,10 @@
 // src/suppliers/suppliers.service.ts
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { SheetsService } from '../sheets/sheets.service';
 
 @Injectable()
 export class SuppliersService {
-  private spreadsheetId =
-    '1868A0REbI30r4r_wmBKcD4YI0UhrB2CjS8FJ8jplWAI';
+  private spreadsheetId = '1868A0REbI30r4r_wmBKcD4YI0UhrB2CjS8FJ8jplWAI';
   private sheetName = 'Supplier List';
   private range = `${this.sheetName}!A2:F`; // ✅ include 6 columns
 
@@ -34,10 +33,38 @@ export class SuppliersService {
     number: string,
     tin: string,
   ) {
-    await this.sheetsService.appendData(this.spreadsheetId, this.range, [
-      [id, name, address, currency, number, tin],
-    ]);
-    return { message: 'Supplier added successfully' };
+    try {
+      // 1️⃣ Get existing suppliers
+      const existingRows = await this.sheetsService.getData(
+        this.spreadsheetId,
+        this.range,
+      );
+
+      // 2️⃣ Check duplicates by ID or TIN
+      const duplicate = existingRows.find(
+        (row) => row[0] === id || row[5] === tin, // adjust indices depending on your sheet structure
+      );
+
+      if (duplicate) {
+        throw new ConflictException(
+          `Supplier with ID "${id}" already exists.`,
+        );
+      }
+
+      // 3️⃣ Append new supplier
+      await this.sheetsService.appendData(this.spreadsheetId, this.range, [
+        [id, name, address, currency, number, tin],
+      ]);
+
+      return { message: 'Supplier added successfully' };
+    } catch (error) {
+      if (error instanceof ConflictException) {
+        throw error; // rethrow conflict for frontend
+      }
+
+      console.error('❌ Error adding supplier:', error);
+      throw new InternalServerErrorException('Failed to add supplier.');
+    }
   }
 
   async updateSupplier(

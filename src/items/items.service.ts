@@ -1,4 +1,9 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateItemDto } from './dto/create-item.dto';
 import { SheetsService } from '../sheets/sheets.service';
 
@@ -21,7 +26,9 @@ export class ItemsService {
     // Check if itemCode already exists
     const existingItem = existingRows.find((row) => row[0] === item.itemCode);
     if (existingItem) {
-      throw new Error(`Item with code "${item.itemCode}" already exists.`);
+      throw new ConflictException(
+        `Item with code "${item.itemCode}" already exists.`,
+      );
     }
 
     const newItem: Items = { ...item };

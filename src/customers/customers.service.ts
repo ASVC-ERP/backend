@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { AddCustomerDto } from './dto/add-customer.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
 import { SheetsService } from '../sheets/sheets.service';
@@ -20,43 +20,66 @@ export class CustomersService {
   constructor(private readonly sheetsService: SheetsService) {}
 
   async create(customer: AddCustomerDto): Promise<Customer> {
-    const existingRows = await this.sheetsService.getData(
-      this.spreadsheetId,
-      this.range,
-    );
+    try {
+      const existingRows = await this.sheetsService.getData(
+        this.spreadsheetId,
+        this.range,
+      );
 
-    // Determine the last customer ID
-    let newIdNumber = 1;
-    if (existingRows.length > 0) {
-      const lastRow = existingRows[existingRows.length - 1];
-      const lastId = lastRow[0]; // e.g., "CUST-015"
-      const lastNum = parseInt(lastId.replace('CUST-', ''), 10);
+      // 🔍 Check for duplicate customer (by TIN or Name/Contact)
+      const duplicate = existingRows.find(
+        (row) =>
+          row[1] === customer.customerName || // assuming col 1 = name
+          row[2] === customer.customerContact || // assuming col 2 = contact
+          row[4] === customer.customerTIN, // assuming col 4 = TIN
+      );
 
-      newIdNumber = lastNum + 1;
+      if (duplicate) {
+        throw new ConflictException(
+          `Customer already exists (duplicate Name, Contact, or TIN).`,
+        );
+      }
+
+      // 🆔 Determine new customer ID
+      let newIdNumber = 1;
+      if (existingRows.length > 0) {
+        const lastRow = existingRows[existingRows.length - 1];
+        const lastId = lastRow[0]; // e.g., "CUST-015"
+        const lastNum = parseInt(lastId.replace('CUST-', ''), 10);
+
+        newIdNumber = lastNum + 1;
+      }
+
+      const newCustomerId = `CUST-${newIdNumber.toString().padStart(3, '0')}`;
+
+      // 📝 Create row to push
+      const row = [
+        [
+          newCustomerId,
+          customer.customerName,
+          customer.customerContact,
+          customer.customerAddress,
+          customer.customerTIN,
+        ],
+      ];
+
+      await this.sheetsService.appendData(this.spreadsheetId, this.range, row);
+
+      return {
+        customerID: newCustomerId,
+        customerName: customer.customerName,
+        customerContact: customer.customerContact,
+        customerAddress: customer.customerAddress,
+        customerTIN: customer.customerTIN,
+      };
+    } catch (error) {
+      if (error instanceof ConflictException) {
+        throw error; // pass duplicate error to frontend
+      }
+
+      console.error('❌ Error creating customer:', error);
+      throw new InternalServerErrorException('Failed to create customer.');
     }
-
-    const newCustomerId = `CUST-${newIdNumber.toString().padStart(3, '0')}`;
-
-    // Create row to push
-    const row = [
-      [
-        newCustomerId,
-        customer.customerName,
-        customer.customerContact,
-        customer.customerAddress,
-        customer.customerTIN, // Added TIN
-      ],
-    ];
-
-    await this.sheetsService.appendData(this.spreadsheetId, this.range, row);
-
-    return {
-      customerID: newCustomerId,
-      customerName: customer.customerName,
-      customerContact: customer.customerContact,
-      customerAddress: customer.customerAddress,
-      customerTIN: customer.customerTIN,
-    };
   }
 
   async findAll(): Promise<Customer[]> {
@@ -83,7 +106,10 @@ export class CustomersService {
   }
 
   async update(customerID: string, dto: UpdateCustomerDto): Promise<Customer> {
-    const data = await this.sheetsService.getData(this.spreadsheetId, this.range);
+    const data = await this.sheetsService.getData(
+      this.spreadsheetId,
+      this.range,
+    );
 
     const rowIndex = data.findIndex((row) => row[0] === customerID);
     if (rowIndex === -1) throw new Error('Customer not found');
@@ -111,15 +137,22 @@ export class CustomersService {
 
   async delete(customerID: string): Promise<void> {
     // Fetch all customer rows
-    const data = await this.sheetsService.getData(this.spreadsheetId, this.range);
+    const data = await this.sheetsService.getData(
+      this.spreadsheetId,
+      this.range,
+    );
 
     // Find the index of the customer to delete
-    const rowIndex = data.findIndex(row => row[0] === customerID);
+    const rowIndex = data.findIndex((row) => row[0] === customerID);
     if (rowIndex === -1) {
       throw new Error(`Customer with ID ${customerID} not found`);
-    } 
+    }
 
     // Delete the row (add 2 because your range starts at A2)
-    await this.sheetsService.deleteRowByName(this.spreadsheetId, this.sheetName, rowIndex + 2);
+    await this.sheetsService.deleteRowByName(
+      this.spreadsheetId,
+      this.sheetName,
+      rowIndex + 2,
+    );
   }
 }
