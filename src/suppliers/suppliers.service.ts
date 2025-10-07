@@ -49,7 +49,7 @@ export class SuppliersService {
 
       // 2️⃣ Check duplicates by ID or TIN
       const duplicate = existingRows.find(
-        (row) => row[0] === id || row[5] === tin, // adjust indices depending on your sheet structure
+        (row) => row[0] === id,
       );
 
       if (duplicate) {

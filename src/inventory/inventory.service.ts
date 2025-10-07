@@ -151,6 +151,7 @@ export class InventoryService {
     columnHeader: string,
     value: string | number,
   ) {
+
     // 1. Get Headers from the first row
     const headerResponse = await this.sheetsService.getData(
       spreadsheetId,

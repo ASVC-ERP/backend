@@ -1,20 +1,31 @@
-import { Controller, Post, Body, BadRequestException, Get, Query, Patch, Delete, Param, } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  BadRequestException,
+  Get,
+  Query,
+  Patch,
+  Delete,
+  Param,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InventoryService } from './inventory.service';
 import { ItemsService } from '../items/items.service';
 
 @Controller('inventory')
 export class InventoryController {
-
   private spreadsheetId: string;
-  
+
   constructor(
     private readonly configService: ConfigService,
     private readonly inventoryService: InventoryService,
     private readonly itemsService: ItemsService,
   ) {
     const id = this.configService.get<string>('SPREADSHEET_ID');
-    if (!id) { throw new Error('SPREADSHEET_ID is not set in environment variables'); }
+    if (!id) {
+      throw new Error('SPREADSHEET_ID is not set in environment variables');
+    }
     this.spreadsheetId = id;
   }
 
@@ -26,7 +37,7 @@ export class InventoryController {
     }
     return result;
   }
-/*
+  /*
   @Get('cost-history')
   async findByHeaderObjects(@Query('itemCode') itemCode: string) {
     const supplierSheet = 'Supplier Invoice';
@@ -67,6 +78,7 @@ export class InventoryController {
     }
 
     const supplierSheet = 'Supplier Invoice';
+    const supplierInfoSheet = 'Supplier';
     const columnHeader = 'itemCode';
 
     // 1️⃣ Fetch all supplier invoice rows for this itemCode
@@ -77,16 +89,33 @@ export class InventoryController {
       itemCode.trim(),
     );
 
-    // 2️⃣ Fetch full inventory to get latest price info
-    const inventory = await this.itemsService.findAll();
-    const itemInfo = inventory.find((item) => item.itemCode === itemCode.trim());
+    if (!history.length) return [];
 
-    // 3️⃣ Attach price fields dynamically (if available)
+    // 2️⃣ Collect all unique supplier IDs
+    const supplierIDs = [
+      ...new Set(history.map((row) => row.supplierID).filter(Boolean)),
+    ];
+
+    // 3️⃣ Fetch supplier details for each ID
+    const supplierDetails: Record<string, any> = {};
+    for (const id of supplierIDs) {
+      const supplierRow =
+        await this.inventoryService.findRowsAsObjectsByColumnHeader(
+          this.spreadsheetId,
+          supplierInfoSheet,
+          'id', // column in Supplier sheet
+          id.trim(),
+        );
+
+      if (supplierRow.length > 0) {
+        supplierDetails[id] = supplierRow[0]; // store supplier info keyed by its ID
+      }
+    }
+
+    // 4️⃣ Combine everything
     const updatedHistory = history.map((row) => ({
       ...row,
-      price1: itemInfo?.price?.price1 ?? null,
-      price2: itemInfo?.price?.price2 ?? null,
-      price3: itemInfo?.price?.price3 ?? null,
+      supplierName: supplierDetails[row.supplierID]?.name ?? null, // ✅ fixed key
     }));
 
     return updatedHistory;
@@ -125,7 +154,6 @@ export class InventoryController {
     @Query('stock') stock: string,
     @Query('remarks') remarks: string,
   ) {
-
     return this.inventoryService.adjustStock(
       this.spreadsheetId,
       itemName,
@@ -140,7 +168,6 @@ export class InventoryController {
     @Query('itemName') itemName: string,
     @Query('price') price: string,
   ) {
-
     return this.inventoryService.updateItemPrice(
       this.spreadsheetId,
       itemName,
@@ -150,7 +177,6 @@ export class InventoryController {
 
   @Patch('update-inventory')
   async updateInventory(@Body() body: any) {
-
     return this.inventoryService.updateInventoryItem(
       this.spreadsheetId,
       body.itemCode,
