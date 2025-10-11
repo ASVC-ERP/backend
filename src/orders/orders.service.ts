@@ -241,7 +241,8 @@ export class OrdersService {
             quantityOrdered: item.quantity,
             quantityServed: approvalDataForOrder[item.itemName]?.quantityServed ?? 0,
             quantityUnserved: approvalDataForOrder[item.itemName]?.quantityUnserved ?? 0,
-            itemCode: item.itemCode, 
+            itemCode: item.itemCode,
+            unit: item.unit,
           })),
         };
         console.log(`[serveApprovedOrders] Constructed serveData for ${orderId}:`, JSON.stringify(serveData, null, 2));
