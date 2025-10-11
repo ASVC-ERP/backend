@@ -93,8 +93,16 @@ export class OrdersService {
       }
     }
 
-    return Object.values(ordersMap);
+    // Convert to array and sort by date (assuming a.date is in a valid date format like "2025-09-19")
+    const sortedOrders = Object.values(ordersMap).sort((a, b) => {
+      const dateA = new Date(a.date).getTime();
+      const dateB = new Date(b.date).getTime();
+      return dateB - dateA; // Descending (newest first). Use `dateA - dateB` for ascending.
+    });
+
+    return sortedOrders;
   }
+
 
   async findOne(orderId: string): Promise<CreateOrderDto> {
     const rows = await this.sheetsService.getData(this.spreadsheetId, this.range);
@@ -339,7 +347,7 @@ export class OrdersService {
             this.spreadsheetId,
             this.sheetName,
             `${statusColLetter}${sheetRow}`,
-            'Pending',
+            'For Request',
           ));
           // Update approvalStatus to 'Pending'
           updatePromises.push(this.sheetsService.updateCell(

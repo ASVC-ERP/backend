@@ -71,7 +71,15 @@ export class InvoiceService {
       }
     }
 
-    return Object.values(invoicesMap);
+    //return Object.values(invoicesMap);
+    // Convert to array and sort by date (assuming a.date is in a valid date format like "2025-09-19")
+    const sortedInvoice = Object.values(invoicesMap).sort((a, b) => {
+      const dateA = new Date(a.date).getTime();
+      const dateB = new Date(b.date).getTime();
+      return dateB - dateA; // Descending (newest first). Use `dateA - dateB` for ascending.
+    });
+
+    return sortedInvoice;
   }
 
   // Search invoices by invoiceID or customerName
