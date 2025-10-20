@@ -167,6 +167,7 @@ export class OrdersService {
       dto.discount ?? 0,
       dto.customerTIN ?? '',
       dto.salesAgent,
+      dto.approvalStatus,
       item.unit || '',
       item.itemCode || '',
     ]));
