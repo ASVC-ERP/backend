@@ -587,45 +587,37 @@ export class OrdersService {
 
     console.log("orderIds:", orderIds);
 
-    // 1️⃣ Get all rows
+    // 1️⃣ Get all rows from the sheet
     const rows = await this.sheetsService.getData(this.spreadsheetId, this.sheetName);
 
     // 2️⃣ Loop through rows and find matching order IDs
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
-      // Assuming row.orderId matches the column in your sheet
-      if (orderIds.includes(row[0])) { // orderID is column A, index 0
-        console.log(`Updating row ${i + 2} for orderId:`, row[0]);
+      const orderId = row[0]?.trim(); // Column A = orderID
 
-        const updatedValues = [
-          row[0],   // orderID (A)
-          row[1],   // date (B)
-          row[2],   // customerName (C)
-          row[3],   // customerAddress (D)
-          row[4],   // customerNumber (E)
-          'Pending', // ✅ status (F)
-          row[6],   // itemName (G)
-          row[7],   // quantity (H)
-          row[8],   // price (I)
-          row[9],   // totalPrice (J)
-          row[10],  // discount (K)
-          row[11],  // customerTIN (L)
-          row[12],  // salesAgent (M)
-          '',        // ✅ approvalStatus cleared (N)
-          row[14],  // unit (O)
-          row[15],  // itemCode (P)
-        ];
+      if (orderIds.includes(orderId)) {
+        const sheetRowNumber = i + 1; // +2 because row[0] = header row 1 in Sheets
+        console.log(`Updating row ${sheetRowNumber} for orderId: ${orderId}`);
 
-        await this.sheetsService.updateRow(
+        // 3️⃣ Update only the "status" (column F) and "approvalStatus" (column N)
+        await this.sheetsService.updateCell(
           this.spreadsheetId,
           this.sheetName,
-          i + 2, // row number in Sheets (+2 if first row is header)
-          updatedValues,
+          `F${sheetRowNumber}`, // status column
+          'Pending',
+        );
+
+        await this.sheetsService.updateCell(
+          this.spreadsheetId,
+          this.sheetName,
+          `N${sheetRowNumber}`, // approvalStatus column
+          '',
         );
       }
     }
 
     return { message: 'Orders rejected successfully' };
   }
+
 
 }

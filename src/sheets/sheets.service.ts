@@ -140,14 +140,28 @@ export class SheetsService implements OnModuleInit {
   ): Promise<void> {
     const range = `${sheetName}!${cell}`;
 
-    await this.sheetsClient.spreadsheets.values.update({
-      spreadsheetId,
-      range,
-      valueInputOption: 'RAW',
-      requestBody: {
-        values: [[newValue]],
-      },
-    });
+    try {
+      console.log('🟡 [updateCell] Preparing to update cell...');
+      console.log('📄 Spreadsheet ID:', spreadsheetId);
+      console.log('📄 Sheet Name:', sheetName);
+      console.log('📄 Cell Range:', range);
+      console.log('📝 New Value:', newValue);
+
+      const result = await this.sheetsClient.spreadsheets.values.update({
+        spreadsheetId,
+        range,
+        valueInputOption: 'USER_ENTERED', // Use USER_ENTERED for better reliability
+        requestBody: {
+          values: [[newValue]],
+        },
+      });
+
+      console.log('✅ [updateCell] Update successful.');
+      console.log('📦 Response:', result.data);
+    } catch (error) {
+      console.error('❌ [updateCell] Failed to update cell.');
+      console.error('Error details:', error.message || error);
+    }
   }
 
   async searchInventory(spreadsheetId: string, range: string): Promise<any[]> {
