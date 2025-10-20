@@ -56,7 +56,9 @@ async generateReceiptA(@Body() data: any, @Res() res: Response) {
   // Items
   doc.font('Helvetica');
   let y = tableTop + 25;
-  (data.items || []).forEach(item => {
+  (data.items || [])
+  .filter(item => (item.quantity || 0) > 0)
+  .forEach(item => {
     const amount = (item.quantity || 0) * (item.price || 0);
     doc.text(item.quantity?.toString() || '', colX.qty, y);
     doc.text(item.unit || '', colX.unit, y);
@@ -153,7 +155,9 @@ async generateReceiptA(@Body() data: any, @Res() res: Response) {
   // Items
   doc.font('Helvetica');
   let y = tableTop + 25;
-  (data.items || []).forEach(item => {
+  (data.items || [])
+  .filter(item => (item.quantity || 0) > 0)  
+  .forEach(item => {
     const amount = (item.quantity || 0) * (item.price || 0);
     doc.text(item.quantity?.toString() || '', colX.qty, y);
     doc.text(item.unit || '', colX.unit, y);
