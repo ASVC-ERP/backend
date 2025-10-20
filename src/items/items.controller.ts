@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Query, Param, UseInterceptors, UploadedFile, Delete, } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, Param, UseInterceptors, UploadedFile, Delete, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { FileInterceptor } from '@nestjs/platform-express';
 import * as ExcelJS from 'exceljs';
@@ -34,6 +34,17 @@ export class ItemsController {
   async findAll(@Query('search') search?: string) {
     return this.itemsService.findAll(search);
   }
+
+  @Get('check-code')
+  async checkItemCode(@Query('itemCode') itemCode: string) {
+    if (!itemCode) {
+      throw new BadRequestException('Item code is required.');
+    }
+
+    const exists = await this.itemsService.checkItemCodeExists(itemCode);
+    return { exists };
+  }
+
 
   @Post('import')
   @UseInterceptors(FileInterceptor('file'))

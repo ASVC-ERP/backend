@@ -93,9 +93,18 @@ export class InvoiceService {
     );
   }
 
+/*
   // Create invoice from an order and return grouped invoice
   async createInvoiceFromOrder(order: any): Promise<Invoice[]> {
-    const invoiceID = `INV-${order.orderID}-${Date.now()}`;
+    const date = new Date();
+    const formattedDate = date.toISOString().split("T")[0].replace(/-/g, ""); // YYYYMMDD
+    const invoiceID = `INV-${order.orderID}-${formattedDate}`;
+
+    // 🔍 Debug logs
+    console.log("Raw date:", date);
+    console.log("Formatted date:", formattedDate);
+    console.log("Generated invoiceID:", invoiceID);
+
     const rows = order.items.map(item => [
       invoiceID,
       order.date,
@@ -134,6 +143,7 @@ export class InvoiceService {
 
     return [invoice];
   }
+*/
 
   // Optionally, fetch a single invoice by ID
   async findOne(invoiceID: string): Promise<Invoice> {
@@ -199,5 +209,4 @@ export class InvoiceService {
 
     console.log(`Invoice ${invoiceID} deleted successfully`);
   }
-
 }

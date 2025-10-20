@@ -39,6 +39,11 @@ export class OrdersController {
     return this.ordersService.serveApprovedOrders(orderIds);
   }
 
+  @Post('reject')
+  async rejectOrders(@Body() { orderIds }: { orderIds: string[] }) {
+    return this.ordersService.rejectOrders(orderIds);
+  }
+
   @Get('sales-orders/by-status')
   async getSalesOrdersByStatus(@Query('status') status: string) {
     return this.ordersService.getSalesOrdersByStatus(status);

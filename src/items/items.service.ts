@@ -303,4 +303,14 @@ export class ItemsService {
 
     return { message: `Item "${itemCode}" deleted successfully.` };
   }
+
+  async checkItemCodeExists(itemCode: string): Promise<boolean> {
+    const data = await this.sheetsService.getData(this.spreadsheetId, this.range);
+
+    const match = data.find(
+      (row) => row[0]?.toString().trim().toLowerCase() === itemCode.trim().toLowerCase()
+    );
+
+    return !!match; // true if item code exists
+  }
 }

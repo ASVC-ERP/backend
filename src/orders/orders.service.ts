@@ -76,6 +76,7 @@ export class OrdersService {
           status: row[5],
           customerTIN: row[11],
           salesAgent: row[12],
+          approvalStatus: row[13] || '',
           orderedItems: [],
           totalPrice: Number(row[9] || 0),
         };
@@ -122,6 +123,7 @@ export class OrdersService {
       status: firstRow[5],
       salesAgent: firstRow[12],
       customerTIN: firstRow[11],
+      approvalStatus: firstRow[13] || '',
       totalPrice: orderRows.reduce((sum, r) => sum + Number(r[8] || 0) * Number(r[7] || 0), 0),
       orderedItems: orderRows.map(r => ({
         itemName: r[6],
@@ -442,7 +444,14 @@ export class OrdersService {
       // -------------------------------
       // 3) Append to Sales Invoice (status Pending)
       // -------------------------------
-      const invoiceId = `INV-${orderId}-${Date.now()}`; // simple unique ID
+      const date = new Date();
+      const formattedDate = date.toISOString().split("T")[0].replace(/-/g, ""); // YYYYMMDD
+      const invoiceId = `INV-${orderId}-${formattedDate}`;
+
+      // 🔍 Debug logs
+      console.log("Raw date:", date);
+      console.log("Formatted date:", formattedDate);
+      console.log("Generated invoiceID:", invoiceId);
       const invoiceRows = serveData.items.map(item => {
         const quantity = item.quantityServed ?? item.quantityOrdered ?? 0;
         const price = item.price ?? 0;
@@ -570,4 +579,53 @@ export class OrdersService {
       });
       return result;
     }
+
+  async rejectOrders(orderIds: string[]) {
+    if (!orderIds || orderIds.length === 0) {
+      return { message: 'No order IDs provided' };
+    }
+
+    console.log("orderIds:", orderIds);
+
+    // 1️⃣ Get all rows
+    const rows = await this.sheetsService.getData(this.spreadsheetId, this.sheetName);
+
+    // 2️⃣ Loop through rows and find matching order IDs
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      // Assuming row.orderId matches the column in your sheet
+      if (orderIds.includes(row[0])) { // orderID is column A, index 0
+        console.log(`Updating row ${i + 2} for orderId:`, row[0]);
+
+        const updatedValues = [
+          row[0],   // orderID (A)
+          row[1],   // date (B)
+          row[2],   // customerName (C)
+          row[3],   // customerAddress (D)
+          row[4],   // customerNumber (E)
+          'Pending', // ✅ status (F)
+          row[6],   // itemName (G)
+          row[7],   // quantity (H)
+          row[8],   // price (I)
+          row[9],   // totalPrice (J)
+          row[10],  // discount (K)
+          row[11],  // customerTIN (L)
+          row[12],  // salesAgent (M)
+          '',        // ✅ approvalStatus cleared (N)
+          row[14],  // unit (O)
+          row[15],  // itemCode (P)
+        ];
+
+        await this.sheetsService.updateRow(
+          this.spreadsheetId,
+          this.sheetName,
+          i + 2, // row number in Sheets (+2 if first row is header)
+          updatedValues,
+        );
+      }
+    }
+
+    return { message: 'Orders rejected successfully' };
+  }
+
 }

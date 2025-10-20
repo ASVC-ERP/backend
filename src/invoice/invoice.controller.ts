@@ -19,12 +19,14 @@ export class InvoiceController {
     return { success: true, invoiceID, waybillNumber };
   }
 
+/*
   @Post(':id/invoice')
   async invoiceOrder(@Param('id') orderId: string) {
     const order = await this.ordersService.findOne(orderId);
     const invoice = await this.invoiceService.createInvoiceFromOrder(order);
     return invoice;
   }
+*/
 
   @Get()
   async findAll(): Promise<Invoice[]> {

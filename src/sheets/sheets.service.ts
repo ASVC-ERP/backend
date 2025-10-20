@@ -187,7 +187,7 @@ export class SheetsService implements OnModuleInit {
       'by quantity:',
       quantityToAdd,
     );
-    console.log('Current inventory data:', data);
+    //console.log('Current inventory data:', data);
 
     let found = false;
 

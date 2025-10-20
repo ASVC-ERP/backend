@@ -72,4 +72,9 @@ export class CreateOrderDto {
 
   @IsEnum(OrderStatus)
   status: OrderStatus;
+
+  @IsOptional()
+  @IsString()
+  approvalStatus?: string;
+
 }
