@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Patch, Body, Param, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Body,
+  Param,
+  Query,
+} from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
@@ -10,13 +18,13 @@ export class OrdersController {
 
   @Post()
   create(@Body() dto: CreateOrderDto) {
-    console.log("📥 Received order from frontend:", dto);
+    console.log('📥 Received order from frontend:', dto);
     return this.ordersService.create(dto);
   }
 
   @Get()
-  findAll() {
-    return this.ordersService.findAll();
+  findAll(@Query('agent') agent?: string) {
+    return this.ordersService.findAll(agent);
   }
   @Get(':id')
   findOne(@Param('id') id: string) {
@@ -30,7 +38,11 @@ export class OrdersController {
   }
 
   @Patch(':orderID/serve')
-  async serveOrder(@Param('orderID') orderId: string, @Body() serveData: ServeOrderDto, @Query('role') role: string) {
+  async serveOrder(
+    @Param('orderID') orderId: string,
+    @Body() serveData: ServeOrderDto,
+    @Query('role') role: string,
+  ) {
     return this.ordersService.serveOrder(orderId, serveData, role);
   }
 
