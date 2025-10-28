@@ -29,7 +29,8 @@ export class SuppliersService {
       currency: currency || '',
       number: number || '',
       tin: tin || '',
-    }));
+    }))
+    .reverse();
   }
 
   async addSupplier(

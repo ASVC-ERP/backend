@@ -59,7 +59,7 @@ export class OrdersService {
     return order;
   }
 
-  async findAll(agent?: string): Promise<Order[]> {
+  async findAll(agent?: string, status?: string): Promise<Order[]> {
     const data = await this.sheetsService.getData(
       this.spreadsheetId,
       this.range,
@@ -109,6 +109,14 @@ export class OrdersService {
       const normalizedAgent = agent.trim().toLowerCase();
       orders = orders.filter(
         (order) => order.salesAgent?.trim().toLowerCase() === normalizedAgent,
+      );
+    }
+
+    // ✅ Filter by status if provided
+    if (status) {
+      const normalizedStatus = status.trim().toLowerCase();
+      orders = orders.filter(
+        (order) => order.status?.trim().toLowerCase() === normalizedStatus,
       );
     }
 
@@ -550,12 +558,15 @@ export class OrdersService {
     // 3) Append to Sales Invoice (status Pending)
     // -------------------------------
     const date = new Date();
-    const formattedDate = date.toISOString().split('T')[0].replace(/-/g, ''); // YYYYMMDD
-    const invoiceId = `INV-${orderId}-${formattedDate}`;
+
+    // Format: MM/DD/YYYY
+    const formattedDate = date.toISOString().split('T')[0];
+    const formattedDateForId = date.toISOString().split('T')[0].replace(/-/g, ''); // YYYYMMDD
+    const invoiceId = `INV-${orderId}-${formattedDateForId}`;
 
     // 🔍 Debug logs
     console.log('Raw date:', date);
-    console.log('Formatted date:', formattedDate);
+    console.log('Formatted date:', formattedDateForId);
     console.log('Generated invoiceID:', invoiceId);
     const invoiceRows = serveData.items.map((item) => {
       const quantity = item.quantityServed ?? item.quantityOrdered ?? 0;
@@ -563,7 +574,7 @@ export class OrdersService {
 
       return [
         invoiceId, // A: invoiceID
-        serveData.date, // B: date
+        formattedDate, // B: date
         serveData.customerName, // C: customerName
         serveData.customerAddress || '', // D: customerAddress
         serveData.customerNumber || '', // E: customerNumber

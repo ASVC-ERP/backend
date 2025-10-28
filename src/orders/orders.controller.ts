@@ -23,8 +23,11 @@ export class OrdersController {
   }
 
   @Get()
-  findAll(@Query('agent') agent?: string) {
-    return this.ordersService.findAll(agent);
+  findAll(
+    @Query('agent') agent?: string,
+    @Query('status') status?: string,
+  ) {
+    return this.ordersService.findAll(agent, status);
   }
   @Get(':id')
   findOne(@Param('id') id: string) {

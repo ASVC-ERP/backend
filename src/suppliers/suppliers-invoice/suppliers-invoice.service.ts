@@ -122,7 +122,7 @@ export class SuppliersInvoiceService {
       });
     }
 
-    return Array.from(groupedMap.values());
+    return Array.from(groupedMap.values()).reverse();
   }
 
   async findByItem(itemCode: string) {
