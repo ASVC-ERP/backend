@@ -71,23 +71,7 @@ export class InvoiceService {
       }
     }
 
-    //return Object.values(invoicesMap);
-    // Convert to array and sort by date (assuming a.date is in a valid date format like "2025-09-19")
-    const sortedInvoice = Object.values(invoicesMap).sort((a, b) => {
-      const dateA = new Date(a.date).getTime();
-      const dateB = new Date(b.date).getTime();
-
-      // First, compare by date (descending)
-      if (dateB !== dateA) return dateB - dateA;
-
-      // Then, compare by orderID (descending, assuming it's a string like "ORD123")
-      const orderNumA = parseInt(a.invoiceID.replace(/\D/g, ""), 10) || 0;
-      const orderNumB = parseInt(b.invoiceID.replace(/\D/g, ""), 10) || 0;
-
-      return orderNumB - orderNumA;
-    });
-
-    return sortedInvoice;
+    return Object.values(invoicesMap).reverse();
   }
 
   // Search invoices by invoiceID or customerName

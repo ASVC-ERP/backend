@@ -31,8 +31,8 @@ export class ItemsController {
   }
 
   @Get()
-  async findAll(@Query('search') search?: string) {
-    return this.itemsService.findAll(search);
+  async get(@Query('search') search?: string) {
+    return this.itemsService.get(search);
   }
 
   @Get('check-code')
@@ -131,7 +131,8 @@ export class ItemsController {
   }
 
   @Delete(':id')
-  async deleteItem(@Param('id') itemCode: string) {
+  async deleteItem(@Param('id') rawCode: string) {
+    const itemCode = decodeURIComponent(rawCode);
     return this.itemsService.deleteItem(itemCode);
   }
 }

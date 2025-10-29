@@ -71,7 +71,7 @@ export class ItemsService {
     return newItem;
   }
 
-  async findAll(search?: string) {
+  async get(search?: string) {
     const data = await this.sheetsService.getData(
       this.spreadsheetId,
       this.range,
