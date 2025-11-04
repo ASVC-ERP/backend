@@ -45,6 +45,15 @@ export class ItemsController {
     return { exists };
   }
 
+  @Get('check-stock')
+  async getItemStock(@Query('itemCode') itemCode: string) {
+    if (!itemCode) {
+      throw new BadRequestException('Item code is required.');
+    }
+
+    const stock = await this.itemsService.getItemStock(itemCode);
+    return { itemCode, stock };
+  }
 
   @Post('import')
   @UseInterceptors(FileInterceptor('file'))

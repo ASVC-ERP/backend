@@ -108,6 +108,19 @@ export class ItemsService {
     return items;
   }
 
+  async getItemStock(itemCode: string): Promise<number | null> {
+    const data = await this.sheetsService.getData(this.spreadsheetId, this.range);
+
+    for (const row of data) {
+      const [code, , , , , stock] = row; // Assuming column F = stock (6th column)
+      if (code === itemCode) {
+        const parsedStock = Number(stock);
+        return isNaN(parsedStock) ? 0 : parsedStock;
+      }
+    }
+    return null; // Not found
+  }
+
   async addStock(
     itemCode: string,
     quantityToAdd: number,
