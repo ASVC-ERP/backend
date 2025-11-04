@@ -45,14 +45,16 @@ export class ItemsController {
     return { exists };
   }
 
-  @Get('check-stock')
-  async getItemStock(@Query('itemCode') itemCode: string) {
-    if (!itemCode) {
-      throw new BadRequestException('Item code is required.');
+  @Get('check-stocks')
+  async getItemStocks(@Query('itemCodes') itemCodes: string) {
+    if (!itemCodes) {
+      throw new BadRequestException('Item codes are required (comma-separated).');
     }
 
-    const stock = await this.itemsService.getItemStock(itemCode);
-    return { itemCode, stock };
+    const codesArray = itemCodes.split(',').map(c => c.trim());
+    const stockMap = await this.itemsService.getStocks(codesArray);
+
+    return { stocks: stockMap };
   }
 
   @Post('import')
