@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
@@ -23,6 +23,7 @@ export class OrdersService {
   }
 
   private sheetName = 'Sales Order';
+  private inventorySheet = 'Inventory';
   private range = `${this.sheetName}!A2:P`;
 
   async create(order: CreateOrderDto): Promise<Order> {
@@ -380,6 +381,63 @@ export class OrdersService {
     try {
       console.log(`Serving order ${orderId} by role: ${role}`);
       console.log('Incoming serveData:', serveData);
+
+      // -------------------------------
+      // 0) Validate stock availability
+      // -------------------------------
+      const inventoryData = await this.sheetsService.getData(
+        this.spreadsheetId,
+        this.inventorySheet, // e.g. "Inventory!A2:Z"
+      );
+      const inventoryHeaders = await this.sheetsService.getData(
+        this.spreadsheetId,
+        `${this.inventorySheet}!1:1`,
+      );
+      const headers = inventoryHeaders?.[0] || [];
+
+      const itemCodeCol = headers.indexOf('itemCode');
+      const stockCol = headers.indexOf('stock');
+      if (itemCodeCol === -1 || stockCol === -1) {
+        throw new Error('Inventory sheet must have "itemCode" and "stock" columns');
+      }
+
+      const stockMap: Record<string, number> = {};
+      for (const row of inventoryData ?? []) {
+        const code = (row[itemCodeCol] || '').trim();
+        const stock = parseFloat(row[stockCol]) || 0;
+        if (code) stockMap[code] = stock;
+      }
+
+      // ✅ Check stock per item
+      const insufficientStock: { itemCode: string; requested: number; available: number }[] = [];
+
+      for (const item of serveData.items) {
+        const code = item.itemCode?.trim() ?? '';
+        const available = stockMap[code] ?? 0;
+        const requested = item.quantityServed ?? 0;
+
+        if (!code) {
+          console.warn(`Skipping item with missing itemCode:`, item);
+          continue;
+        }
+
+        if (available < requested) {
+          insufficientStock.push({
+            itemCode: code,
+            requested,
+            available,
+          });
+        }
+      }
+
+      if (insufficientStock.length > 0) {
+        console.warn('Stock validation failed:', insufficientStock);
+        throw new BadRequestException({
+          message: 'Insufficient stock for one or more items.',
+          details: insufficientStock,
+        });
+      }
+
       // -------------------------------
       // 1) Update Orders sheet status
       // -------------------------------
