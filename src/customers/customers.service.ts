@@ -95,33 +95,58 @@ export class CustomersService {
   }
 
   async findByIds(idList: string[]): Promise<Customer[]> {
-      const rows = await this.sheetsService.getData(this.spreadsheetId, this.range);
+    const rows = await this.sheetsService.getData(this.spreadsheetId, this.range);
 
-      if (!rows || rows.length === 0) {
-        throw new Error('No customer data found.');
-      }
-
-      // Assuming your columns: ID | Name | Contact | Address | TIN | Terms
-      const matchedCustomers: Customer[] = [];
-
-      for (const id of idList) {
-        const normalizedId = id.trim().toLowerCase();
-
-        const row = rows.find(r => (r[0] ?? '').trim().toLowerCase() === normalizedId);
-        if (row) {
-          matchedCustomers.push({
-            customerID: row[0],
-            customerName: row[1],
-            customerContact: row[2],
-            customerAddress: row[3],
-            customerTIN: row[4],
-            customerTerms: row[5],
-          });
-        }
-      }
-
-      return matchedCustomers;
+    if (!rows || rows.length === 0) {
+      throw new Error('No customer data found.');
     }
+
+    // Assuming your columns: ID | Name | Contact | Address | TIN | Terms
+    const matchedCustomers: Customer[] = [];
+
+    for (const id of idList) {
+      const normalizedId = id.trim().toLowerCase();
+
+      const row = rows.find(r => (r[0] ?? '').trim().toLowerCase() === normalizedId);
+      if (row) {
+        matchedCustomers.push({
+          customerID: row[0],
+          customerName: row[1],
+          customerContact: row[2],
+          customerAddress: row[3],
+          customerTIN: row[4],
+          customerTerms: row[5],
+        });
+      }
+    }
+
+    return matchedCustomers;
+  }
+
+  async findByCustomerName(name: string): Promise<Customer | null> {
+    const rows = await this.sheetsService.getData(this.spreadsheetId, this.range);
+    if (!rows || rows.length === 0) {
+      throw new Error('No customer data found.');
+    }
+
+    const normalizedQuery = name.trim().toLowerCase().normalize('NFKC');
+
+    for (const row of rows) {
+      const customerName = (row[1] || '').trim().toLowerCase().normalize('NFKC');
+      if (customerName === normalizedQuery) {
+        return {
+          customerID: row[0],
+          customerName: row[1],
+          customerContact: row[2],
+          customerAddress: row[3],
+          customerTIN: row[4],
+          customerTerms: row[5],
+        };
+      }
+    }
+
+    return null;
+  }
 
   async search(query: string): Promise<Customer[]> {
     const data = await this.getCustomers();
