@@ -10,6 +10,24 @@ import { SheetsService } from '../sheets/sheets.service';
 
 export type Items = CreateItemDto;
 
+export interface Item {
+  itemCode: string;
+  itemName: string;
+  brand: string;
+  origin: string;
+  minStock: number;
+  stock: number;
+  cost: number;
+  price1: number;
+  price2: number;
+  price3: number;
+  price4: number;
+  partNum: string;
+  interNum: string;
+  unit: string;
+  model: string;
+}
+
 @Injectable()
 export class ItemsService {
   private spreadsheetId: string;
@@ -24,6 +42,12 @@ export class ItemsService {
 
   private sheetName = 'Inventory';
   private range = `${this.sheetName}!A2:P`;
+
+
+
+
+
+
 
   async create(item: CreateItemDto): Promise<Items> {
     const existingRows = await this.sheetsService.getData(
@@ -71,6 +95,11 @@ export class ItemsService {
     return newItem;
   }
 
+
+
+
+
+
   async get(search?: string) {
     const data = await this.sheetsService.getData(
       this.spreadsheetId,
@@ -108,6 +137,12 @@ export class ItemsService {
     return items;
   }
 
+
+
+
+
+
+
   async getStocks(itemCodes: string[]): Promise<Record<string, number>> {
     if (!itemCodes || itemCodes.length === 0) return {};
 
@@ -123,6 +158,14 @@ export class ItemsService {
     }
     return stockMap;
   }
+
+
+
+
+
+
+
+
 
   async addStock(
     itemCode: string,
@@ -196,6 +239,14 @@ export class ItemsService {
     }
   }
 
+
+
+
+
+
+
+
+
   async removeStock(itemCode: string, quantityToRemove: number): Promise<void> {
     const data = await this.sheetsService.getData(
       this.spreadsheetId,
@@ -232,6 +283,11 @@ export class ItemsService {
     }
   }
 
+
+
+
+
+
   async getPrices(itemCode: string) {
     const data = await this.sheetsService.getData(
       this.spreadsheetId,
@@ -252,6 +308,12 @@ export class ItemsService {
 
     throw new NotFoundException(`Item with code "${itemCode}" not found.`);
   }
+
+
+
+
+
+
 
   async addItems(
     items: {
@@ -291,6 +353,11 @@ export class ItemsService {
     );
   }
 
+
+
+
+
+
   async deleteItem(itemCode: string) {
     if (!itemCode) {
       throw new BadRequestException('Item code is required.');
@@ -320,6 +387,10 @@ export class ItemsService {
     return { message: `Item "${itemCode}" deleted successfully.` };
   }
 
+
+
+
+
   async checkItemCodeExists(itemCode: string): Promise<boolean> {
     const data = await this.sheetsService.getData(this.spreadsheetId, this.range);
 
@@ -329,4 +400,67 @@ export class ItemsService {
 
     return !!match; // true if item code exists
   }
+
+
+
+
+
+  async findByItemCodes(itemCodes: string[]): Promise<Item[]> {
+    console.log('[Service] Searching for itemCodes:', itemCodes);
+
+    const rows = await this.sheetsService.getData(this.spreadsheetId, this.range);
+    if (!rows || rows.length === 0) {
+      throw new Error('No data found in sheet.');
+    }
+
+    const foundItems: Item[] = [];
+
+    for (const row of rows) {
+      const [
+        itemCode,
+        itemName,
+        brand,
+        origin,
+        minStock,
+        stock,
+        cost,
+        price1,
+        price2,
+        price3,
+        price4,
+        partNum,
+        interNum,
+        unit,
+        model,
+      ] = row;
+
+      if (itemCodes.includes(itemCode)) {
+        foundItems.push({
+          itemCode,
+          itemName,
+          brand,
+          origin,
+          minStock: Number(minStock ?? 0),
+          stock: Number(stock ?? 0),
+          cost: Number(cost ?? 0),
+          price1: Number(price1 ?? 0),
+          price2: Number(price2 ?? 0),
+          price3: Number(price3 ?? 0),
+          price4: Number(price4 ?? 0),
+          partNum,
+          interNum,
+          unit,
+          model,
+        });
+      }
+    }
+
+    if (foundItems.length === 0) {
+      throw new Error(`No items found for codes: ${itemCodes.join(', ')}`);
+    }
+
+    return foundItems;
+  }
+
+
 }

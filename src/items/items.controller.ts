@@ -24,16 +24,28 @@ export class ItemsController {
     this.spreadsheetId = id;
   }
 
-  @Post()
-  create(@Body() dto: CreateItemDto) {
-    console.log('📥 Received item from frontend:', dto);
-    return this.itemsService.create(dto);
-  }
+  // ------------------
+  // GET
+  // ------------------
 
   @Get()
   async get(@Query('search') search?: string) {
     return this.itemsService.get(search);
   }
+
+
+  @Get('itemCodes')
+  async findByItemCodes(@Query('codes') codes: string) {
+    console.log('[Controller] Received itemCodes query:', codes);
+
+    if (!codes) {
+      throw new Error('No item codes provided.');
+    }
+
+    const itemCodes = codes.split(',').map(c => c.trim()).filter(c => c);
+    return this.itemsService.findByItemCodes(itemCodes);
+  }
+
 
   @Get('check-code')
   async checkItemCode(@Query('itemCode') itemCode: string) {
@@ -45,6 +57,7 @@ export class ItemsController {
     return { exists };
   }
 
+
   @Get('check-stocks')
   async getItemStocks(@Query('itemCodes') itemCodes: string) {
     if (!itemCodes) {
@@ -55,6 +68,16 @@ export class ItemsController {
     const stockMap = await this.itemsService.getStocks(codesArray);
 
     return { stocks: stockMap };
+  }
+
+
+  // ------------------
+  // POST
+  // ------------------
+  @Post()
+  create(@Body() dto: CreateItemDto) {
+    console.log('📥 Received item from frontend:', dto);
+    return this.itemsService.create(dto);
   }
 
   @Post('import')
@@ -140,7 +163,11 @@ export class ItemsController {
 
     return { message: 'Import successful', count: newItems.length };
   }
-
+ 
+ 
+  // ------------------
+  // DELETE
+  // ------------------  
   @Delete(':id')
   async deleteItem(@Param('id') rawCode: string) {
     const itemCode = decodeURIComponent(rawCode);

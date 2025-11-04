@@ -1,4 +1,4 @@
-import { IsString, IsNumber } from 'class-validator';
+import { IsString } from 'class-validator';
 
 export class AddCustomerDto {
 
@@ -13,4 +13,7 @@ export class AddCustomerDto {
 
   @IsString()
   customerTIN: string;
+
+  @IsString()
+  customerTerms: string;
 }

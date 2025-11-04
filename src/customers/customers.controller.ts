@@ -15,8 +15,16 @@ export class CustomersController {
 
   // GET /customers
   @Get()
-  async findAll(): Promise<Customer[]> {
-    return this.customersService.findAll();
+  async getCustomers(): Promise<Customer[]> {
+    return this.customersService.getCustomers();
+  }
+
+  // GET /customers/:id — Get customer by ID
+  @Get('customerID')
+  async findByIds(@Query('id') ids: string): Promise<Customer[]> {
+    // Split comma-separated IDs into an array
+    const idList = ids.split(',').map(id => id.trim());
+    return this.customersService.findByIds(idList);
   }
 
   // GET /customers/search?query=John
