@@ -34,6 +34,11 @@ export class OrdersController {
     return this.ordersService.findOne(id);
   }
 
+  @Get('served-items/:orderId')
+  async getServedItems(@Param('orderId') orderId: string) {
+    return this.ordersService.getServedItems(orderId);
+  }
+
   @Patch(':id')
   update(@Param('id') id: string, @Body() dto: UpdateOrderDto) {
     console.log(`✏️ Updating order ${id}`, dto);

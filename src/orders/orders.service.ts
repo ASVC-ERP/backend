@@ -232,6 +232,34 @@ export class OrdersService {
   private readonly salesInvoiceSheet = 'Sales Invoice!A:K';
   private readonly approvalSheet = 'Approval!A:D';
 
+  async getServedItems(orderId: string) {
+    try {
+      // 1️⃣ Fetch data from Google Sheet
+      const rows = await this.sheetsService.getData(
+        this.spreadsheetId,
+        this.approvalSheet
+      );
+
+      if (!rows || rows.length <= 1) return [];
+
+      // 2️⃣ Convert rows into structured objects
+      const servedItems = rows
+        .slice(1) // skip header
+        .map(([orderIdVal, itemName, qtyServed, qtyUnserved]) => ({
+          orderId: orderIdVal,
+          itemName,
+          quantityServed: Number(qtyServed) || 0,
+          quantityUnserved: Number(qtyUnserved) || 0,
+        }))
+        .filter((r) => r.orderId === orderId);
+
+      return servedItems;
+    } catch (error) {
+      console.error('Error reading ServedItems sheet:', error);
+      throw new Error('Failed to fetch served items');
+    }
+  }
+
   async serveApprovedOrders(orderIds: string[]) {
     console.log(
       `[serveApprovedOrders] Starting process for ${orderIds.length} orders:`,
@@ -796,40 +824,62 @@ export class OrdersService {
       return { message: 'No order IDs provided' };
     }
 
-    console.log('orderIds:', orderIds);
+    console.log('orderIds:', orderIds.map(x => x.trim()));
 
-    // 1️⃣ Get all rows from the sheet
-    const rows = await this.sheetsService.getData(
-      this.spreadsheetId,
-      this.sheetName,
-    );
+    // 1) Update orders sheet rows (existing logic)
+    const rows = await this.sheetsService.getData(this.spreadsheetId, this.sheetName);
 
-    // 2️⃣ Loop through rows and find matching order IDs
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
-      const orderId = row[0]?.trim(); // Column A = orderID
-
-      if (orderIds.includes(orderId)) {
-        const sheetRowNumber = i + 1; // +2 because row[0] = header row 1 in Sheets
+      const orderId = String(row[0] || '').trim(); // Column A = orderID
+      if (orderIds.map(x => x.trim()).includes(orderId)) {
+        const sheetRowNumber = i + 1;
         console.log(`Updating row ${sheetRowNumber} for orderId: ${orderId}`);
-
-        // 3️⃣ Update only the "status" (column F) and "approvalStatus" (column N)
-        await this.sheetsService.updateCell(
-          this.spreadsheetId,
-          this.sheetName,
-          `F${sheetRowNumber}`, // status column
-          'Pending',
-        );
-
-        await this.sheetsService.updateCell(
-          this.spreadsheetId,
-          this.sheetName,
-          `N${sheetRowNumber}`, // approvalStatus column
-          '',
-        );
+        await this.sheetsService.updateCell(this.spreadsheetId, this.sheetName, `F${sheetRowNumber}`, 'Pending');
+        await this.sheetsService.updateCell(this.spreadsheetId, this.sheetName, `N${sheetRowNumber}`, '');
       }
     }
 
+    // 2) Load approval sheet (entire sheet, header included)
+    const approvalSheetData = await this.sheetsService.getData(this.spreadsheetId, this.approvalSheet);
+    if (!approvalSheetData || approvalSheetData.length === 0) {
+      console.log('Approval sheet empty — nothing to remove');
+      return { message: 'Orders rejected successfully' };
+    }
+
+    // 3) Determine column indexes from header row
+    const approvalHeaders = approvalSheetData[0].map((h: any) => String(h || '').trim());
+    const approvalOrderIdCol = approvalHeaders.indexOf('orderId');
+    // if header not found, fallback to col 0
+    if (approvalOrderIdCol === -1) {
+      console.warn('orderId header not found in Approval sheet — defaulting to column 0');
+    }
+    const colIndex = approvalOrderIdCol === -1 ? 0 : approvalOrderIdCol;
+
+    // 4) Build rowsToKeep: keep header, plus only rows whose orderId is NOT in orderIds
+    const normalizedOrderIds = orderIds.map((id) => String(id).trim());
+    let rowsToKeep: any[][] = [];
+    rowsToKeep.push(approvalSheetData[0]); // header
+
+    // iterate rows after header
+    for (let i = 1; i < approvalSheetData.length; i++) {
+      const row = approvalSheetData[i];
+      const cellOrderId = String(row[colIndex] || '').trim();
+      if (!normalizedOrderIds.includes(cellOrderId)) {
+        rowsToKeep.push(row);
+      } else {
+        console.log(`Removing Approval row ${i + 1} (sheet row) with orderId=${cellOrderId}`);
+      }
+    }
+
+    // 5) Clear and re-append kept rows
+    await this.sheetsService.clear(this.spreadsheetId, this.approvalSheet);
+    // appendData should accept an array-of-arrays format (rowsToKeep)
+    await this.sheetsService.appendData(this.spreadsheetId, this.approvalSheet, rowsToKeep);
+
+    console.log(`[rejectOrders] Removed orders ${normalizedOrderIds.join(', ')} from Approval sheet.`);
     return { message: 'Orders rejected successfully' };
   }
+
+
 }

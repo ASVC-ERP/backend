@@ -28,7 +28,7 @@ export class PackingListController {
       width: 300, // wraps text within 300px
       align: 'left',
     });
-    doc.text(`TIN: ${data.customerTIN}`, 50, 110);
+    doc.text(`TIN: ${data.customerTIN}`, 400, 110);
 
     // ===== ITEMS TABLE =====
     const tableTop = 150;

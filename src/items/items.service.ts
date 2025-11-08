@@ -134,7 +134,7 @@ export class ItemsService {
       );
     }
 
-    return items;
+    return items.reverse();
   }
 
 

@@ -147,6 +147,16 @@ export class InventoryController {
     );
   }
 
+  @Get('sales-order-history/get-order-id')
+  async getByOrder(@Query('orderId') orderId: string) {
+    return this.inventoryService.findRowsAsObjectsByColumnHeader(
+      this.spreadsheetId,
+      'Sales Order History',
+      'orderID',
+      orderId,
+    );
+  }
+
   @Get('adjust-stock')
   async adjustStock(
     @Query('itemName') itemName: string,
