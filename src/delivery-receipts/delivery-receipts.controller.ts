@@ -115,6 +115,13 @@ async generateReceiptA(@Body() data: any, @Res() res: Response) {
 
   @Post('b')
   async generateReceiptB(@Body() data: any, @Res() res: Response) {
+    const customer = await this.customersService.findByCustomerName(data.customerName);
+    if (!customer) {
+      throw new Error(`Customer "${data.customerName}" not found`);
+    }
+    data.terms = data.terms || customer.customerTerms;
+    console.log("terms: ", data.terms);
+
     const doc = new PDFDocument({ margin: 40 });
 
     res.setHeader('Content-Type', 'application/pdf');
