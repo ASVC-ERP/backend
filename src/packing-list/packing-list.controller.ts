@@ -111,7 +111,9 @@ export class PackingListController {
     let y = tableTop + rowHeight;
     const itemsList = data.items || data.orderedItems || [];
 
-    itemsList.forEach(item => {
+    itemsList
+    .filter(item => (item.quantity || 0) > 0)
+    .forEach(item => {
       if (y + rowHeight > doc.page.height - 50) {
         doc.addPage();
         y = 50;

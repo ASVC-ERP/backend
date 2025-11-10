@@ -19,8 +19,6 @@ async generateReceiptA(@Body() data: any, @Res() res: Response) {
 
   data.terms = data.terms || customer.customerTerms;
 
-  console.log("terms: ", data.terms);
-
   const doc = new PDFDocument({ margin: 40 });
 
   res.setHeader('Content-Type', 'application/pdf');
@@ -120,7 +118,6 @@ async generateReceiptA(@Body() data: any, @Res() res: Response) {
       throw new Error(`Customer "${data.customerName}" not found`);
     }
     data.terms = data.terms || customer.customerTerms;
-    console.log("terms: ", data.terms);
 
     const doc = new PDFDocument({ margin: 40 });
 
