@@ -10,6 +10,7 @@ export class InvoiceController {
     private readonly ordersService: OrdersService,
   ) {}
 
+  /*
   @Put(':id/waybill')
   async updateWayBill(
     @Param('id') invoiceID: string,
@@ -18,6 +19,32 @@ export class InvoiceController {
     await this.invoiceService.updateWaybillNumber(invoiceID, waybillNumber);
     return { success: true, invoiceID, waybillNumber };
   }
+  */
+
+  @Put(':id/shipping')
+  async updateShippingDetails(
+    @Param('id') invoiceID: string,
+    @Body('waybillNumber') waybillNumber: string,
+    @Body('courier') courier: string,
+    @Body('shipDate') shipDate: string,
+  ) {
+    console.log("received");
+    await this.invoiceService.updateShippingDetails(
+      invoiceID,
+      waybillNumber,
+      courier,
+      shipDate,
+    );
+
+    return {
+      success: true,
+      invoiceID,
+      waybillNumber,
+      courier,
+      shipDate,
+    };
+  }
+
 
 /*
   @Post(':id/invoice')

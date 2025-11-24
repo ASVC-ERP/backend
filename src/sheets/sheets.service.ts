@@ -116,6 +116,23 @@ export class SheetsService implements OnModuleInit {
     console.log('Update response:', result.data);
   }
 
+  async batchUpdateData(
+    spreadsheetId: string,
+    updates: { range: string; values: any[][] }[],
+  ) {
+    return await this.sheetsClient.spreadsheets.values.batchUpdate({
+      spreadsheetId,
+      requestBody: {
+        valueInputOption: "USER_ENTERED",
+        data: updates.map(u => ({
+          range: u.range,
+          values: u.values,
+        })),
+      },
+    });
+  }
+
+
   // ✅ Update one row at a specific row number
   async updateRow(
     spreadsheetId: string,
