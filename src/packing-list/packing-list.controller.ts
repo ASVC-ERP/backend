@@ -114,24 +114,29 @@ export class PackingListController {
     itemsList
     .filter(item => (item.quantity || 0) > 0)
     .forEach(item => {
-      if (y + rowHeight > doc.page.height - 50) {
+      const qtyHeight = doc.heightOfString((item.quantity ?? 0).toString(), { width: colWidth.qty - 10 });
+      const unitHeight = doc.heightOfString(item.unit || '', { width: colWidth.unit - 10 });
+      const itemHeight = doc.heightOfString(item.itemName || '', { width: colWidth.item - 10 });
+      const cartonHeight = doc.heightOfString(item.carton ?? '', { width: colWidth.carton - 10 });
+
+      const dynamicRowHeight = Math.max(qtyHeight, unitHeight, itemHeight, cartonHeight) + 10;
+
+      if (y + dynamicRowHeight > doc.page.height - 50) {
         doc.addPage();
         y = 50;
       }
 
-      // Draw cells
-      doc.rect(colX.qty, y, colWidth.qty, rowHeight).stroke();
-      doc.rect(colX.unit, y, colWidth.unit, rowHeight).stroke();
-      doc.rect(colX.item, y, colWidth.item, rowHeight).stroke();
-      doc.rect(colX.carton, y, colWidth.carton, rowHeight).stroke();
+      doc.rect(colX.qty, y, colWidth.qty, dynamicRowHeight).stroke();
+      doc.rect(colX.unit, y, colWidth.unit, dynamicRowHeight).stroke();
+      doc.rect(colX.item, y, colWidth.item, dynamicRowHeight).stroke();
+      doc.rect(colX.carton, y, colWidth.carton, dynamicRowHeight).stroke();
 
-      // Write values
       doc.text((item.quantity ?? 0).toString(), colX.qty + 5, y + 5, { width: colWidth.qty - 10 });
       doc.text(item.unit || '', colX.unit + 5, y + 5, { width: colWidth.unit - 10 });
       doc.text(item.itemName || '', colX.item + 5, y + 5, { width: colWidth.item - 10 });
       doc.text(item.carton ?? '', colX.carton + 5, y + 5, { width: colWidth.carton - 10 });
 
-      y += rowHeight;
+      y += dynamicRowHeight;
     });
 
     doc.end();
