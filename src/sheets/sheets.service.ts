@@ -272,4 +272,36 @@ export class SheetsService implements OnModuleInit {
       },
     });
   }
+
+  async batchDeleteRows(
+    spreadsheetId: string,
+    sheetName: string,
+    rowNumbers: number[],
+  ) {
+    // Get numeric sheetId
+    const sheetId = await this.getSheetId(spreadsheetId, sheetName);
+
+    // Must sort descending so deletes don't shift row numbers
+    const sorted = rowNumbers.sort((a, b) => b - a);
+
+    const requests = sorted.map((row) => ({
+      deleteDimension: {
+        range: {
+          sheetId,
+          dimension: "ROWS",
+          startIndex: row - 1, // convert A2 → index 1
+          endIndex: row,
+        },
+      },
+    }));
+
+    // ↓↓↓ ONE API CALL ONLY ↓↓↓
+    await this.sheetsClient.spreadsheets.batchUpdate({
+      spreadsheetId,
+      requestBody: {
+        requests,
+      },
+    });
+  }
+
 }

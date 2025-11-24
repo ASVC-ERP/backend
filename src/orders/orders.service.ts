@@ -881,5 +881,30 @@ export class OrdersService {
     return { message: 'Orders rejected successfully' };
   }
 
+  async remove(orderID: string): Promise<void> {
+    const data = await this.sheetsService.getData(this.spreadsheetId, this.range);
+    if (!data) return;
 
+    const rowsToDelete: number[] = [];
+
+    data.forEach((row, index) => {
+      if (row[0] === orderID) {
+        rowsToDelete.push(index + 2);
+      }
+    });
+
+    if (rowsToDelete.length === 0) {
+      throw new Error(`Order ${orderID} not found in sheet`);
+    }
+
+    console.log("Rows to delete:", rowsToDelete);
+
+    await this.sheetsService.batchDeleteRows(
+      this.spreadsheetId,
+      this.sheetName,
+      rowsToDelete
+    );
+
+    console.log(`Order ${orderID} deleted successfully`);
+  }
 }

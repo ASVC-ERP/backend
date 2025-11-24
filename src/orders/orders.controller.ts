@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Delete,
   Patch,
   Body,
   Param,
@@ -67,5 +68,11 @@ export class OrdersController {
   @Get('sales-orders/by-status')
   async getSalesOrdersByStatus(@Query('status') status: string) {
     return this.ordersService.getSalesOrdersByStatus(status);
+  }
+
+  @Delete(':id')
+  async remove(@Param('id') id: string) {
+    console.log(`🗑️ Deleting order ${id}`);
+    return this.ordersService.remove(id);
   }
 }
