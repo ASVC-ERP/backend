@@ -69,16 +69,26 @@ async generateReceiptA(@Body() data: any, @Res() res: Response) {
   doc.font('Helvetica');
   let y = tableTop + 25;
   (data.items || [])
-  .filter(item => (item.quantity || 0) > 0)
-  .forEach(item => {
-    const amount = (item.quantity || 0) * (item.price || 0);
-    doc.text(item.quantity?.toString() || '', colX.qty, y);
-    doc.text(item.unit || '', colX.unit, y);
-    doc.text(item.itemName || '', colX.desc, y, { width: 220 });
-    doc.text((item.price || 0).toFixed(2), colX.price, y );
-    doc.text(amount.toFixed(2), colX.amount, y,);
-    y += 20;
-  });
+    .filter(item => (item.quantity || 0) > 0)
+    .forEach(item => {
+      const amount = (item.quantity || 0) * (item.price || 0);
+
+      // Measure wrapped description height
+      const descHeight = doc.heightOfString(item.itemName || '', {
+        width: 220,
+        align: 'left'
+      });
+
+      // Print row
+      doc.text(item.quantity?.toString() || '', colX.qty, y);
+      doc.text(item.unit || '', colX.unit, y);
+      doc.text(item.itemName || '', colX.desc, y, { width: 220 });
+      doc.text((item.price || 0).toFixed(2), colX.price, y);
+      doc.text(amount.toFixed(2), colX.amount, y);
+
+      // Move y based on tallest content (description)
+      y += Math.max(descHeight, 20) + 5; // add small padding
+    });
 
   // Totals
   const netTotal = (data.items || []).reduce((sum, item) => sum + ((item.quantity || 0) * (item.price || 0)), 0);
@@ -173,16 +183,26 @@ async generateReceiptA(@Body() data: any, @Res() res: Response) {
   doc.font('Helvetica');
   let y = tableTop + 25;
   (data.items || [])
-  .filter(item => (item.quantity || 0) > 0)  
-  .forEach(item => {
-    const amount = (item.quantity || 0) * (item.price || 0);
-    doc.text(item.quantity?.toString() || '', colX.qty, y);
-    doc.text(item.unit || '', colX.unit, y);
-    doc.text(item.itemName || '', colX.desc, y, { width: 220 });
-    doc.text((item.price || 0).toFixed(2), colX.price, y );
-    doc.text(amount.toFixed(2), colX.amount, y,);
-    y += 20;
-  });
+    .filter(item => (item.quantity || 0) > 0)
+    .forEach(item => {
+      const amount = (item.quantity || 0) * (item.price || 0);
+
+      // Measure wrapped description height
+      const descHeight = doc.heightOfString(item.itemName || '', {
+        width: 220,
+        align: 'left'
+      });
+
+      // Print row
+      doc.text(item.quantity?.toString() || '', colX.qty, y);
+      doc.text(item.unit || '', colX.unit, y);
+      doc.text(item.itemName || '', colX.desc, y, { width: 220 });
+      doc.text((item.price || 0).toFixed(2), colX.price, y);
+      doc.text(amount.toFixed(2), colX.amount, y);
+
+      // Move y based on tallest content (description)
+      y += Math.max(descHeight, 20) + 5; // add small padding
+    });
 
     const netTotal = (data.items || []).reduce((sum, item) => sum + ((item.quantity || 0) * (item.price || 0)), 0);
     y += 20;
