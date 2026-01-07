@@ -40,6 +40,9 @@ export class InvoiceService {
     this.spreadsheetId = id;
   }
 
+
+
+  
   // Fetch all invoices grouped by invoiceID
   async findAll(): Promise<Invoice[]> {
     const data = await this.sheetsService.getData(this.spreadsheetId, this.range);
@@ -80,6 +83,9 @@ export class InvoiceService {
     return Object.values(invoicesMap).reverse();
   }
 
+
+
+
   // Search invoices by invoiceID or customerName
   async search(query: string): Promise<Invoice[]> {
     const all = await this.findAll();
@@ -91,6 +97,9 @@ export class InvoiceService {
     );
   }
 
+
+
+
   // Optionally, fetch a single invoice by ID
   async findOne(invoiceID: string): Promise<Invoice> {
     const all = await this.findAll();
@@ -98,54 +107,42 @@ export class InvoiceService {
     if (!invoice) throw new Error(`Invoice ${invoiceID} not found`);
     return invoice;
   }
-/*
-  async updateWaybillNumber(invoiceID: string, newWaybillNumber: string): Promise<void> {
-    const data = await this.sheetsService.getData(this.spreadsheetId, this.range);
 
-    if (!data) return;
-    const rowsToUpdate: number[] = [];
 
-    data.forEach((row, index) => {
-      if (row[0] === invoiceID) {
-        rowsToUpdate.push(index + 2); // +2 because data starts from row 2 (A2:K)
-      }
-    });
 
-    if (rowsToUpdate.length === 0) {
-      throw new Error(`Invoice ${invoiceID} not found in sheet`);
-    }
 
-    for (const rowIndex of rowsToUpdate) {
-      const waybillRange = `${this.sheetName}!F${rowIndex}`;
-      await this.sheetsService.updateData(this.spreadsheetId, waybillRange, [[newWaybillNumber]]);
-    }
-  }
-*/
-
-/*
   async updateShippingDetails(
     invoiceID: string,
     waybillNumber: string,
     courier: string,
     shipDate: string,
   ): Promise<void> {
-
     const data = await this.sheetsService.getData(this.spreadsheetId, this.range);
+
+    console.log("Loaded rows:", data?.length);
+
     if (!data) return;
 
     const rowsToUpdate: number[] = [];
 
     data.forEach((row, index) => {
       if (row[0] === invoiceID) {
-        rowsToUpdate.push(index + 2); // Since data starts at row 2
+        console.log(`Match found at row index ${index} (Sheet row ${index + 2})`);
+        rowsToUpdate.push(index + 2); // Since sheet data starts at row 2
       }
     });
 
     if (rowsToUpdate.length === 0) {
+      console.error(`Invoice ${invoiceID} not found`);
       throw new Error(`Invoice ${invoiceID} not found`);
     }
 
     for (const rowIndex of rowsToUpdate) {
+      console.log(`\n--- Updating Sheet Row ${rowIndex} ---`);
+      console.log(`Waybill → F${rowIndex}:`, waybillNumber);
+      console.log(`Courier → O${rowIndex}:`, courier);
+      console.log(`ShipDate → P${rowIndex}:`, shipDate);
+
       await this.sheetsService.batchUpdateData(
         this.spreadsheetId,
         [
@@ -154,63 +151,12 @@ export class InvoiceService {
           { range: `${this.sheetName}!P${rowIndex}`, values: [[shipDate]] },
         ]
       );
+
+      console.log(`Row ${rowIndex} updated successfully.`);
     }
+
+    console.log("=== END updateShippingDetails ===\n");
   }
-*/
-
-async updateShippingDetails(
-  invoiceID: string,
-  waybillNumber: string,
-  courier: string,
-  shipDate: string,
-): Promise<void> {
-
-  console.log("=== updateShippingDetails CALLED ===");
-  console.log("invoiceID:", invoiceID);
-  console.log("waybillNumber:", waybillNumber);
-  console.log("courier:", courier);
-  console.log("shipDate RECEIVED:", shipDate);
-
-  const data = await this.sheetsService.getData(this.spreadsheetId, this.range);
-
-  console.log("Loaded rows:", data?.length);
-
-  if (!data) return;
-
-  const rowsToUpdate: number[] = [];
-
-  data.forEach((row, index) => {
-    if (row[0] === invoiceID) {
-      console.log(`Match found at row index ${index} (Sheet row ${index + 2})`);
-      rowsToUpdate.push(index + 2); // Since sheet data starts at row 2
-    }
-  });
-
-  if (rowsToUpdate.length === 0) {
-    console.error(`Invoice ${invoiceID} not found`);
-    throw new Error(`Invoice ${invoiceID} not found`);
-  }
-
-  for (const rowIndex of rowsToUpdate) {
-    console.log(`\n--- Updating Sheet Row ${rowIndex} ---`);
-    console.log(`Waybill → F${rowIndex}:`, waybillNumber);
-    console.log(`Courier → O${rowIndex}:`, courier);
-    console.log(`ShipDate → P${rowIndex}:`, shipDate);
-
-    await this.sheetsService.batchUpdateData(
-      this.spreadsheetId,
-      [
-        { range: `${this.sheetName}!F${rowIndex}`, values: [[waybillNumber]] },
-        { range: `${this.sheetName}!O${rowIndex}`, values: [[courier]] },
-        { range: `${this.sheetName}!P${rowIndex}`, values: [[shipDate]] },
-      ]
-    );
-
-    console.log(`Row ${rowIndex} updated successfully.`);
-  }
-
-  console.log("=== END updateShippingDetails ===\n");
-}
 
 
 

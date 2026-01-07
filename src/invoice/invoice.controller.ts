@@ -10,17 +10,6 @@ export class InvoiceController {
     private readonly ordersService: OrdersService,
   ) {}
 
-  /*
-  @Put(':id/waybill')
-  async updateWayBill(
-    @Param('id') invoiceID: string,
-    @Body('waybillNumber') waybillNumber: string,
-  ) {
-    await this.invoiceService.updateWaybillNumber(invoiceID, waybillNumber);
-    return { success: true, invoiceID, waybillNumber };
-  }
-  */
-
   @Put(':id/shipping')
   async updateShippingDetails(
     @Param('id') invoiceID: string,
@@ -44,16 +33,6 @@ export class InvoiceController {
       shipDate,
     };
   }
-
-
-/*
-  @Post(':id/invoice')
-  async invoiceOrder(@Param('id') orderId: string) {
-    const order = await this.ordersService.findOne(orderId);
-    const invoice = await this.invoiceService.createInvoiceFromOrder(order);
-    return invoice;
-  }
-*/
 
   @Get()
   async findAll(): Promise<Invoice[]> {

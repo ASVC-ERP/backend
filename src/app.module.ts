@@ -14,6 +14,11 @@ import { CustomersModule } from './customers/customers.module';
 import { InvoiceModule } from './invoice/invoice.module';
 import { DeliveryReceiptsModule } from './delivery-receipts/delivery-receipts.module';
 import { PackingListModule } from './packing-list/packing-list.module';
+import { SupabaseModule } from './supabase/supabase.module';
+import { CustomerModule } from './asvc-customer/asvc-customer.module';0
+import { UsersModule } from './asvc-user/asvc-user.module';
+import { SupplierModule } from './asvc-supplier/asvc-supplier.module';
+import { OrderModule } from './asvc-order/asvc-order.module';
 
 @Module({
   imports: [
@@ -38,6 +43,11 @@ import { PackingListModule } from './packing-list/packing-list.module';
     InvoiceModule,
     DeliveryReceiptsModule,
     PackingListModule,
-  ]
+    SupabaseModule,
+    CustomerModule,
+    UsersModule,
+    SupplierModule,
+    OrderModule,
+  ],
 })
 export class AppModule {}
