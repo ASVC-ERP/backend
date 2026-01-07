@@ -1,13 +1,41 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { CreateSalesOrderDto } from './dto/create-order.dto';
+import { UpdateSalesOrderDto } from './dto/update-order.dto';
 
 @Injectable()
 export class OrderService {
   constructor(private readonly supabase: SupabaseService) {}
 
   async create(dto: CreateSalesOrderDto) {
-    // 1. compute subtotal
+
+    // 1. validate item codes
+    const item = dto.items.map(i => i.item_code);
+
+    const { data: existingItems, error: itemError } =
+      await this.supabase.client
+        .from('products')
+        .select('item_code')
+        .in('item_code', item);
+
+    if (itemError) throw itemError;
+
+    // 1.1 find missing items
+    const existingCodes = new Set(
+      existingItems.map(i => i.item_code)
+    );
+
+    const missing = item.filter(
+      code => !existingCodes.has(code)
+    );
+
+    if (missing.length > 0) {
+      throw new BadRequestException(
+        `Item(s) not found: ${missing.join(', ')}`
+      );
+    }
+
+    // 1.2 compute subtotal
     const subtotal = dto.items.reduce(
       (sum, item) => sum + item.quantity * item.price,
       0
@@ -25,7 +53,8 @@ export class OrderService {
         order_date: dto.order_date,
         discount,
         total_price,
-        status: 'OPEN'
+        status: 'OPEN',
+        approval_status: 'PENDING'
       })
       .select()
       .single();
@@ -113,4 +142,96 @@ export class OrderService {
     return { ...order, items };
   }
 
+  async update(id: number, dto: UpdateSalesOrderDto) {
+    // 1. Ensure order exists
+    const { data: order, error: findError } = await this.supabase.client
+      .from('sales_orders')
+      .select('id')
+      .eq('id', id)
+      .single();
+  
+    if (findError || !order) {
+      throw new Error('Sales order not found');
+    }
+  
+    // 2. Recompute totals from items
+    const subtotal = dto.items.reduce(
+      (sum, item) => sum + item.quantity * item.price,
+      0
+    );
+  
+    const discount = dto.discount ?? 0;
+    const total_price = subtotal - discount;
+  
+    // 3. Update order header
+    const { error: updateError } = await this.supabase.client
+      .from('sales_orders')
+      .update({
+        cid: dto.cid,
+        sales_agent: dto.sales_agent,
+        order_date: dto.order_date,
+        discount,
+        total_price
+      })
+      .eq('id', id);
+  
+    if (updateError) throw updateError;
+  
+    // 4. Delete existing items
+    const { error: deleteError } = await this.supabase.client
+      .from('sales_order_items')
+      .delete()
+      .eq('sales_order_id', id);
+  
+    if (deleteError) throw deleteError;
+  
+    // 5. Insert new items
+    const itemsPayload = dto.items.map(item => ({
+      sales_order_id: id,
+      item_code: item.item_code,
+      quantity: item.quantity,
+      price: item.price
+    }));
+  
+    const { error: insertError } = await this.supabase.client
+      .from('sales_order_items')
+      .insert(itemsPayload);
+  
+    if (insertError) throw insertError;
+  
+    return { updated: true };
+  }
+  
+  async delete(orderId: number) {
+    // 1. Check order exists
+    const { data: order, error: orderError } = await this.supabase.client
+      .from('sales_orders')
+      .select('id')
+      .eq('id', orderId)
+      .single();
+  
+    if (orderError || !order) {
+      throw new NotFoundException('Order' + orderId + ' not found');
+    }
+  
+    // 2. Delete items FIRST (FK safety)
+    const { error: itemsError } = await this.supabase.client
+      .from('sales_order_items')
+      .delete()
+      .eq('sales_order_id', orderId);
+  
+    if (itemsError) {
+      throw new BadRequestException(itemsError.message);
+    }
+  
+    // 3. Delete order
+    const { error: orderDeleteError } = await this.supabase.client
+      .from('sales_orders')
+      .delete()
+      .eq('id', orderId);
+  
+    if (orderDeleteError) {
+      throw new BadRequestException(orderDeleteError.message);
+    }
+  }
 }

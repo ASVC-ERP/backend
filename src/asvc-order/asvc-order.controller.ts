@@ -18,7 +18,9 @@ export class OrderController {
   constructor(private readonly service: OrderService) {}
 
   @Post()
-  create(@Body(new ValidationPipe()) dto: CreateSalesOrderDto) {
+  create(
+    @Body(new ValidationPipe()) dto: CreateSalesOrderDto
+  ) {
     return this.service.create(dto);
   }
 
@@ -28,8 +30,25 @@ export class OrderController {
   }
 
   @Get(':id')
-  find(@Param('id') id: number) {
+  find(
+    @Param('id') id: number
+  ) {
     return this.service.find(id);
   }
 
+  @Patch(':id')
+  update(
+    @Param('id') id: number,
+    @Body() dto: UpdateSalesOrderDto
+  ) {
+    return this.service.update(id, dto);
+  }
+
+  @Delete(':id')
+  async delete(
+    @Param('id') id: number
+  ) {
+    await this.service.delete(id);
+    return { message: 'Order' + id + ' deleted successfully' };
+  }
 }
