@@ -53,8 +53,8 @@ export class OrderService {
         order_date: dto.order_date,
         discount,
         total_price,
-        status: 'OPEN',
-        approval_status: 'PENDING'
+        status: 'Open',
+        approval_status: 'None'
       })
       .select()
       .single();
@@ -126,20 +126,78 @@ export class OrderService {
   }
 
   async find(id: number) {
-    const { data: order, error } = await this.supabase.client
+    const { data, error } = await this.supabase.client
       .from('sales_orders')
-      .select('*')
+      .select(`
+        id,
+        order_code,
+        order_date,
+        status,
+        total_price,
+        discount,
+        users (
+          id,
+          username,
+          role
+        ),
+        approval_status,
+        created_at,
+        customers (
+          cid,
+          name,
+          address,
+          number
+        ),
+        sales_order_items (
+          id,
+          item_code,
+          quantity,
+          price
+        )
+      `)
       .eq('id', id)
       .single();
-
+  
     if (error) throw error;
+  
+    return {
+      id: data.id,
+      order_code: data.order_code,
+      order_date: data.order_date,
+      status: data.status,
+      total_price: data.total_price,
+      discount: data.discount,
+      approval_status: data.approval_status,
+      created_at: data.created_at,
+      sales_agent: data.users,
+      customer: data.customers,
+      items: data.sales_order_items
+    };
+  }
 
-    const { data: items } = await this.supabase.client
-      .from('sales_order_items')
-      .select('*')
-      .eq('sales_order_id', id);
+  async request(id: number) {
+    // 1. Ensure order exists
+    const { data: order, error: findError } = await this.supabase.client
+      .from('sales_orders')
+      .select('id')
+      .eq('id', id)
+      .single();
+  
+    if (findError || !order) {
+      throw new Error('Sales order not found');
+    }
 
-    return { ...order, items };
+    //2. Approve order
+    const { error: approveError } = await this.supabase.client
+      .from('sales_orders')
+      .update({
+        approval_status: "For Request"
+      })
+      .eq('id', id);
+  
+    if (approveError) throw approveError;
+
+    return { request: true };
   }
 
   async approve(id: number) {

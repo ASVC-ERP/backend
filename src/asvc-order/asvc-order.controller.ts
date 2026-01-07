@@ -44,6 +44,13 @@ export class OrderController {
     return this.service.update(id, dto);
   }
 
+  @Patch('request/:id')
+  request(
+    @Param('id') id: number
+  ) {
+    return this.service.request(id);
+  }
+
   @Patch('approve/:id')
   approve(
     @Param('id') id: number

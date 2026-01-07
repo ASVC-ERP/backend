@@ -1,11 +1,23 @@
 import { Controller, Post, Param, Get, Delete, Patch, ParseIntPipe } from '@nestjs/common';
 import { InvoicesService } from './invoices.service';
 
-@Controller('process')
+@Controller('invoices')
 export class InvoicesController {
   constructor(private readonly service: InvoicesService) {}
 
-  @Post('order/:id/invoice')
+  @Get()
+  findAll() {
+    return this.service.findAll();
+  }
+
+  @Get(':id')
+  find(
+    @Param('id') id: number
+  ) {
+    return this.service.find(id);
+  }
+
+  @Post('order/:id')
   generate(
     @Param('id', ParseIntPipe) id: number
   ) {
