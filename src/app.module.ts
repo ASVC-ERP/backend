@@ -19,6 +19,8 @@ import { CustomerModule } from './asvc-customer/asvc-customer.module';0
 import { UsersModule } from './asvc-user/asvc-user.module';
 import { SupplierModule } from './asvc-supplier/asvc-supplier.module';
 import { OrderModule } from './asvc-order/asvc-order.module';
+import { ProductModule } from './asvc-product/product.module';
+import { InvoicesModule } from './asvc-invoice/invoices.module';
 
 @Module({
   imports: [
@@ -48,6 +50,8 @@ import { OrderModule } from './asvc-order/asvc-order.module';
     UsersModule,
     SupplierModule,
     OrderModule,
+    ProductModule,
+    InvoicesModule,
   ],
 })
 export class AppModule {}

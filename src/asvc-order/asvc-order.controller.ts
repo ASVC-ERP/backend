@@ -44,6 +44,13 @@ export class OrderController {
     return this.service.update(id, dto);
   }
 
+  @Patch('approve/:id')
+  approve(
+    @Param('id') id: number
+  ) {
+    return this.service.approve(id);
+  }
+
   @Delete(':id')
   async delete(
     @Param('id') id: number

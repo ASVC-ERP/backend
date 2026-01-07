@@ -142,6 +142,32 @@ export class OrderService {
     return { ...order, items };
   }
 
+  async approve(id: number) {
+    // 1. Ensure order exists
+    const { data: order, error: findError } = await this.supabase.client
+      .from('sales_orders')
+      .select('id')
+      .eq('id', id)
+      .single();
+  
+    if (findError || !order) {
+      throw new Error('Sales order not found');
+    }
+
+    //2. Approve order
+    const { error: approveError } = await this.supabase.client
+      .from('sales_orders')
+      .update({
+        approval_status: "Approved"
+      })
+      .eq('id', id);
+  
+    if (approveError) throw approveError;
+
+    return { approved: true };
+
+  }
+
   async update(id: number, dto: UpdateSalesOrderDto) {
     // 1. Ensure order exists
     const { data: order, error: findError } = await this.supabase.client
