@@ -2,15 +2,14 @@ import { Injectable, BadRequestException, NotFoundException } from '@nestjs/comm
 import { SupabaseService } from '../supabase/supabase.service';
 import { CreateSalesOrderDto } from './dto/create-order.dto';
 import { UpdateSalesOrderDto } from './dto/update-order.dto';
-import { ServeOrderDto } from './dto/serve-order.dto';
 
 @Injectable()
 export class OrderService {
   constructor(private readonly supabase: SupabaseService) {}
 
-// ---------------------------------
+// ------------------------------------------------------------------------------------------------------------------------------------
 // CRUD Functions
-// ---------------------------------
+// ------------------------------------------------------------------------------------------------------------------------------------
 
   async create(dto: CreateSalesOrderDto) {
 
@@ -283,9 +282,9 @@ export class OrderService {
     }
   }
 
-// ---------------------------------
+// ------------------------------------------------------------------------------------------------------------------------------------
 // Serve Functions
-// ---------------------------------
+// ------------------------------------------------------------------------------------------------------------------------------------
 
   async serve(
     id: number,
@@ -465,13 +464,13 @@ export class OrderService {
     };
   }
 
-  async approve(orderId: number) {
+  async approve(id: number) {
     // 1. fetch pending serve requests
     const { data: serveItems, error: serveError } =
       await this.supabase.client
         .from('serve_items')
         .select('*')
-        .eq('order_id', orderId)
+        .eq('order_id', id)
         .eq('status', 'pending');
   
     if (serveError) throw serveError;
@@ -533,7 +532,7 @@ export class OrderService {
       await this.supabase.client
         .from('serve_items')
         .select('*')
-        .eq('order_id', orderId);
+        .eq('order_id', id);
   
     if (allServeItemsError) throw allServeItemsError;
   
@@ -546,7 +545,7 @@ export class OrderService {
     const { error: orderUpdateError } = await this.supabase.client
       .from('sales_orders')
       .update({ status: newStatus })
-      .eq('id', orderId);
+      .eq('id', id);
   
     if (orderUpdateError) throw orderUpdateError;
   
@@ -589,6 +588,119 @@ export class OrderService {
       message: 'Serve request rejected and cleared',
       id,
       status: 'Open',
+    };
+  }
+
+// ------------------------------------------------------------------------------------------------------------------------------------
+// Invoice Functions
+// ------------------------------------------------------------------------------------------------------------------------------------
+  async invoice(id: number) {
+    // 1. fetch order
+    const { data: order, error: orderError } =
+      await this.supabase.client
+        .from('sales_orders')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+    if (orderError) throw orderError;
+
+    if (!['Served', 'Partial Served'].includes(order.status)) {
+      throw new Error(
+        `Cannot create invoice. Order status is ${order.status}`,
+      );
+    }
+
+    // 2. check existing invoice
+    const { data: existingInvoice } =
+      await this.supabase.client
+        .from('sales_invoices')
+        .select('id')
+        .eq('sales_order_id', id)
+        .maybeSingle();
+
+    if (existingInvoice) {
+      throw new Error('Invoice already exists for this order');
+    }
+
+    // 3. fetch served items
+    const { data: serveItems, error: serveError } =
+      await this.supabase.client
+        .from('serve_items')
+        .select('*')
+        .eq('order_id', id)
+        .gt('quantity_to_serve', 0);
+
+    if (serveError) throw serveError;
+    if (!serveItems.length) {
+      throw new Error('No served items to invoice');
+    }
+
+    // 4. fetch prices
+    const itemCodes = serveItems.map(i => i.item_code);
+
+    const { data: orderItems, error: orderItemsError } =
+      await this.supabase.client
+        .from('sales_order_items')
+        .select('item_code, price')
+        .eq('sales_order_id', id)
+        .in('item_code', itemCodes);
+
+    if (orderItemsError) throw orderItemsError;
+
+    // 5. create invoice
+    const { data: invoice, error: invoiceError } =
+      await this.supabase.client
+        .from('sales_invoices')
+        .insert({
+          sales_order_id: id,
+          cid: order.cid,
+          sales_agent: order.sales_agent,
+          invoice_date: new Date(),
+        })
+        .select()
+        .single();
+
+    if (invoiceError) throw invoiceError;
+
+    // 6. create invoice items
+    const invoiceItems = serveItems.map(item => {
+      const price =
+        orderItems.find(o => o.item_code === item.item_code)?.price ?? 0;
+
+      return {
+        sales_invoice_id: invoice.id,
+        item_code: item.item_code,
+        quantity: item.quantity_to_serve,
+        price,
+      };
+    });
+
+    const { error: itemsError } =
+      await this.supabase.client
+        .from('sales_invoice_items')
+        .insert(invoiceItems);
+
+    if (itemsError) throw itemsError;
+
+    // 7. compute total
+    const totalPrice = invoiceItems.reduce(
+      (sum, i) => sum + i.quantity * i.price,
+      0,
+    );
+
+    // 8. update invoice total
+    const { error: updateError } =
+      await this.supabase.client
+        .from('sales_invoices')
+        .update({ total_price: totalPrice })
+        .eq('id', invoice.id);
+
+    if (updateError) throw updateError;
+
+    return {
+      invoice_id: invoice.id,
+      total_price: totalPrice,
     };
   }
 }

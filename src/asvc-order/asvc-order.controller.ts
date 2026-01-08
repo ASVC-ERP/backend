@@ -93,4 +93,11 @@ export class OrderController {
   ) {
     return this.service.reject(id);
   }
+
+  @Post(':id/invoice')
+  async invoice(
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.service.invoice(id);
+  }
 }
