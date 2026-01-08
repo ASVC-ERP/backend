@@ -86,4 +86,11 @@ export class OrderController {
   ) {
     return this.service.approve(id);
   }
+
+  @Post(':id/reject')
+  async reject(
+    @Param('id', ParseIntPipe) id: number
+  ) {
+    return this.service.reject(id);
+  }
 }

@@ -8,6 +8,10 @@ import { ServeOrderDto } from './dto/serve-order.dto';
 export class OrderService {
   constructor(private readonly supabase: SupabaseService) {}
 
+// ---------------------------------
+// CRUD Functions
+// ---------------------------------
+
   async create(dto: CreateSalesOrderDto) {
 
     // 1. validate item codes
@@ -186,59 +190,6 @@ export class OrderService {
     };
   }
 
-  /*
-  async request(id: number) {
-    // 1. Ensure order exists
-    const { data: order, error: findError } = await this.supabase.client
-      .from('sales_orders')
-      .select('id')
-      .eq('id', id)
-      .single();
-  
-    if (findError || !order) {
-      throw new Error('Sales order not found');
-    }
-
-    //2. Approve order
-    const { error: approveError } = await this.supabase.client
-      .from('sales_orders')
-      .update({
-        status: "For Approval",
-        approval_status: "For Request"
-      })
-      .eq('id', id);
-  
-    if (approveError) throw approveError;
-
-    return { request: true };
-  }
-
-  async approve(id: number) {
-    // 1. Ensure order exists
-    const { data: order, error: findError } = await this.supabase.client
-      .from('sales_orders')
-      .select('id')
-      .eq('id', id)
-      .single();
-  
-    if (findError || !order) {
-      throw new Error('Sales order not found');
-    }
-
-    //2. Approve order
-    const { error: approveError } = await this.supabase.client
-      .from('sales_orders')
-      .update({
-        status: "Ready to Invoice",
-        approval_status: "Approved"
-      })
-      .eq('id', id);
-  
-    if (approveError) throw approveError;
-    return { approved: true };
-  }
-  */
-
   async update(id: number, dto: UpdateSalesOrderDto) {
     // 1. Ensure order exists
     const { data: order, error: findError } = await this.supabase.client
@@ -332,7 +283,10 @@ export class OrderService {
     }
   }
 
-  //ADMIN SERVE LOGIC
+// ---------------------------------
+// Serve Functions
+// ---------------------------------
+
   async serve(
     id: number,
     itemsToServe: { item_code: string; quantity_to_serve: number } []
@@ -444,7 +398,6 @@ export class OrderService {
     return serveItems;
   }
 
-  //AGENT SERVE LOGIC
   async request(
     id: number,
     items: { item_code: string; quantity_to_serve: number }[],
@@ -458,21 +411,12 @@ export class OrderService {
 
     if (orderError) throw orderError;
 
-    // 0.1 check approval status
-    if (order.approval_status !== 'Not Required') {
-      throw new Error(
-        `Order ${id} requires approval.`,
-      );
-    }
-
     // 0.2 check status
     if (order.status !== 'Open') {
       throw new Error(
         `Order ${id} is closed. Cannot proceed to serve.`,
       );
     }
-
-    
 
     // 2. fetch order items
     const { data: orderItems, error: itemsError } =
@@ -607,5 +551,44 @@ export class OrderService {
     if (orderUpdateError) throw orderUpdateError;
   
     return { message: 'Serve request approved', status: newStatus };
-  }  
+  }
+
+  async reject(id: number) {
+    // 1. verify pending serve requests exist
+    const { data: pendingItems, error: pendingError } =
+      await this.supabase.client
+        .from('serve_items')
+        .select('id')
+        .eq('order_id', id)
+        .eq('status', 'pending');
+
+    if (pendingError) throw pendingError;
+
+    if (!pendingItems || pendingItems.length === 0) {
+      throw new Error('No pending serve requests to reject');
+    }
+
+    // 2. delete pending serve_items
+    const { error: deleteError } = await this.supabase.client
+      .from('serve_items')
+      .delete()
+      .eq('order_id', id)
+      .eq('status', 'pending');
+
+    if (deleteError) throw deleteError;
+
+    // 3. update order status
+    const { error: orderUpdateError } = await this.supabase.client
+      .from('sales_orders')
+      .update({ status: 'Open' })
+      .eq('id', id);
+
+    if (orderUpdateError) throw orderUpdateError;
+
+    return {
+      message: 'Serve request rejected and cleared',
+      id,
+      status: 'Open',
+    };
+  }
 }
