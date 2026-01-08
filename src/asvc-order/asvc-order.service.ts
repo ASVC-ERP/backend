@@ -44,6 +44,16 @@ export class OrderService {
 
     const discount = dto.discount ?? 0;
     const total_price = subtotal - discount;
+    
+    const { data: user, error: userError } = await this.supabase.client
+      .from('users')
+      .select('role')
+      .eq('username', dto.sales_agent)
+      .single();
+
+    if (userError) throw userError;
+
+    const approval_status = user.role === 'admin' ? 'Not Required' : 'Required';
 
     // 2. create sales order
     const { data: order, error } = await this.supabase.client
@@ -55,7 +65,7 @@ export class OrderService {
         discount,
         total_price,
         status: 'Open',
-        approval_status: '-'
+        approval_status
       })
       .select()
       .single();
