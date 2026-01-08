@@ -2,6 +2,7 @@ import { Injectable, BadRequestException, NotFoundException } from '@nestjs/comm
 import { SupabaseService } from '../supabase/supabase.service';
 import { CreateSalesOrderDto } from './dto/create-order.dto';
 import { UpdateSalesOrderDto } from './dto/update-order.dto';
+import { ServeOrderDto } from './dto/serve-order.dto';
 
 @Injectable()
 export class OrderService {
@@ -43,6 +44,10 @@ export class OrderService {
 
     const discount = dto.discount ?? 0;
     const total_price = subtotal - discount;
+    const approval_status =
+      dto.role === 'admin'
+        ? 'not required'
+        : 'pending';
 
     // 2. create sales order
     const { data: order, error } = await this.supabase.client
@@ -54,7 +59,7 @@ export class OrderService {
         discount,
         total_price,
         status: 'Open',
-        approval_status: 'None'
+        approval_status: '-'
       })
       .select()
       .single();
@@ -191,6 +196,7 @@ export class OrderService {
     const { error: approveError } = await this.supabase.client
       .from('sales_orders')
       .update({
+        status: "For Approval",
         approval_status: "For Request"
       })
       .eq('id', id);
@@ -200,6 +206,7 @@ export class OrderService {
     return { request: true };
   }
 
+  /*
   async approve(id: number) {
     // 1. Ensure order exists
     const { data: order, error: findError } = await this.supabase.client
@@ -216,15 +223,15 @@ export class OrderService {
     const { error: approveError } = await this.supabase.client
       .from('sales_orders')
       .update({
+        status: "Ready to Invoice",
         approval_status: "Approved"
       })
       .eq('id', id);
   
     if (approveError) throw approveError;
-
     return { approved: true };
-
   }
+  */
 
   async update(id: number, dto: UpdateSalesOrderDto) {
     // 1. Ensure order exists
@@ -318,4 +325,120 @@ export class OrderService {
       throw new BadRequestException(orderDeleteError.message);
     }
   }
+
+  async serve(orderId: number, dto: ServeOrderDto, user: any) {
+    const sb = this.supabase.client;
+  
+    /* 1️. Fetch order */
+    const { data: order, error: orderError } = await sb
+      .from('sales_orders')
+      .select('id, status, approval_status')
+      .eq('id', orderId)
+      .single();
+  
+    if (orderError || !order) {
+      throw new BadRequestException('Order not found');
+    }
+  
+    /*
+    if (order.approval_status !== 'Approved') {
+      throw new BadRequestException('Order is not approved');
+    }
+    */
+    if (order.status === 'Served') {
+      throw new BadRequestException('Order has already been served');
+    }
+
+    if (order.approval_status !== 'For Approval' && order.approval_status !== '-') {
+      throw new BadRequestException('Order is not for approval');
+    }
+  
+    /* 2️⃣ Fetch order items */
+    const { data: orderItems, error: itemsError } = await sb
+      .from('sales_order_items')
+      .select('id, quantity')
+      .eq('sales_order_id', orderId);
+  
+    if (itemsError || !orderItems) {
+      throw new BadRequestException('Failed to fetch order items');
+    }
+  
+    const itemMap = new Map(
+      orderItems.map(i => [i.id, Number(i.quantity)])
+    );
+  
+    /* 3️⃣ Validate served quantities */
+    for (const item of dto.items) {
+      const orderedQty = itemMap.get(item.sales_order_item_id);
+  
+      if (orderedQty === undefined) {
+        throw new BadRequestException(
+          `Invalid sales_order_item_id ${item.sales_order_item_id}`
+        );
+      }
+  
+      if (
+        item.served_quantity <= 0 ||
+        item.served_quantity > orderedQty
+      ) {
+        throw new BadRequestException(
+          `Invalid served quantity for item ${item.sales_order_item_id}`
+        );
+      }
+    }
+  
+    /* 4️⃣ Decide serve + approval status */
+    const isAdmin = user.role === 'admin';
+  
+    const serveStatus = isAdmin ? 'SERVED' : 'DRAFT';
+    const approvalStatus = isAdmin ? 'NOT_REQUIRED' : 'PENDING';
+  
+    /* 5️⃣ Create serve header */
+    const { data: serve, error: serveError } = await sb
+      .from('sales_order_serves')
+      .insert({
+        sales_order_id: orderId,
+        requested_by: user.username,
+        status: serveStatus,
+        approval_status: approvalStatus
+      })
+      .select()
+      .single();
+  
+    if (serveError || !serve) {
+      throw new BadRequestException('Failed to create serve');
+    }
+  
+    /* 6️⃣ Create serve items */
+    const serveItems = dto.items.map(i => ({
+      sales_order_serve_id: serve.id,
+      sales_order_item_id: i.sales_order_item_id,
+      served_quantity: i.served_quantity
+    }));
+  
+    const { error: serveItemsError } = await sb
+      .from('sales_order_serve_items')
+      .insert(serveItems);
+  
+    if (serveItemsError) {
+      throw new BadRequestException('Failed to create serve items');
+    }
+  
+    /* 7️⃣ If admin, mark order as SERVED */
+    if (isAdmin) {
+      await sb
+        .from('sales_orders')
+        .update({ status: 'SERVED' })
+        .eq('id', orderId);
+    }
+  
+    return {
+      message: isAdmin
+        ? 'Order served successfully'
+        : 'Serve request submitted for approval',
+      serve_id: serve.id,
+      status: serveStatus,
+      approval_status: approvalStatus
+    };
+  }  
 }
