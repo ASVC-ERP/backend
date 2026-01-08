@@ -348,7 +348,14 @@ export class OrderService {
     // 0.1 check approval status
     if (orderData.approval_status !== 'Not Required') {
       throw new Error(
-        `Order ${id} requires approval. Cannot serve until approved.`,
+        `Order ${id} requires approval.`,
+      );
+    }
+
+    // 0.2 check status
+    if (orderData.status !== 'Open') {
+      throw new Error(
+        `Order ${id} is closed. Cannot proceed to serve.`,
       );
     }
 
@@ -439,24 +446,40 @@ export class OrderService {
 
   //AGENT SERVE LOGIC
   async request(
-    orderId: number,
+    id: number,
     items: { item_code: string; quantity_to_serve: number }[],
   ) {
     // 1. fetch order
     const { data: order, error: orderError } = await this.supabase.client
       .from('sales_orders')
-      .select('id, approval_status')
-      .eq('id', orderId)
+      .select('id, status, approval_status')
+      .eq('id', id)
       .single();
 
     if (orderError) throw orderError;
+
+    // 0.1 check approval status
+    if (order.approval_status !== 'Not Required') {
+      throw new Error(
+        `Order ${id} requires approval.`,
+      );
+    }
+
+    // 0.2 check status
+    if (order.status !== 'Open') {
+      throw new Error(
+        `Order ${id} is closed. Cannot proceed to serve.`,
+      );
+    }
+
+    
 
     // 2. fetch order items
     const { data: orderItems, error: itemsError } =
       await this.supabase.client
         .from('sales_order_items')
         .select('*')
-        .eq('sales_order_id', orderId);
+        .eq('sales_order_id', id);
 
     if (itemsError) throw itemsError;
 
@@ -478,7 +501,7 @@ export class OrderService {
 
     // 4. insert serve_items as PENDING
     const serveItems = items.map(item => ({
-      order_id: orderId,
+      order_id: id,
       item_code: item.item_code,
       quantity_ordered:
         orderItems.find(o => o.item_code === item.item_code)!.quantity,
