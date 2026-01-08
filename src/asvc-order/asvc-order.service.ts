@@ -186,6 +186,7 @@ export class OrderService {
     };
   }
 
+  /*
   async request(id: number) {
     // 1. Ensure order exists
     const { data: order, error: findError } = await this.supabase.client
@@ -212,7 +213,6 @@ export class OrderService {
     return { request: true };
   }
 
-  /*
   async approve(id: number) {
     // 1. Ensure order exists
     const { data: order, error: findError } = await this.supabase.client
@@ -332,6 +332,7 @@ export class OrderService {
     }
   }
 
+  //ADMIN SERVE LOGIC
   async serve(
     id: number,
     itemsToServe: { item_code: string; quantity_to_serve: number } []
@@ -393,7 +394,6 @@ export class OrderService {
       quantity_ordered:
         orderItems.find((o) => o.item_code === item.item_code)!.quantity,
       quantity_to_serve: item.quantity_to_serve,
-      served_quantity: item.quantity_to_serve,
       status: item.quantity_to_serve > 0 ? 'served' : 'cannot_serve',
     }));
 
@@ -436,4 +436,153 @@ export class OrderService {
 
     return serveItems;
   }
+
+  //AGENT SERVE LOGIC
+  async request(
+    orderId: number,
+    items: { item_code: string; quantity_to_serve: number }[],
+  ) {
+    // 1. fetch order
+    const { data: order, error: orderError } = await this.supabase.client
+      .from('sales_orders')
+      .select('id, approval_status')
+      .eq('id', orderId)
+      .single();
+
+    if (orderError) throw orderError;
+
+    // 2. fetch order items
+    const { data: orderItems, error: itemsError } =
+      await this.supabase.client
+        .from('sales_order_items')
+        .select('*')
+        .eq('sales_order_id', orderId);
+
+    if (itemsError) throw itemsError;
+
+    // 3. validate quantities vs ordered
+    for (const item of items) {
+      const orderedQty =
+        orderItems.find(o => o.item_code === item.item_code)?.quantity ?? 0;
+
+      if (item.quantity_to_serve <= 0) {
+        throw new Error(`Quantity must be greater than 0`);
+      }
+
+      if (item.quantity_to_serve > orderedQty) {
+        throw new Error(
+          `Cannot request ${item.quantity_to_serve} of ${item.item_code}. Only ${orderedQty} ordered.`,
+        );
+      }
+    }
+
+    // 4. insert serve_items as PENDING
+    const serveItems = items.map(item => ({
+      order_id: orderId,
+      item_code: item.item_code,
+      quantity_ordered:
+        orderItems.find(o => o.item_code === item.item_code)!.quantity,
+      quantity_to_serve: item.quantity_to_serve,
+      status: 'pending',
+    }));
+
+    const { error: insertError } = await this.supabase.client
+      .from('serve_items')
+      .insert(serveItems);
+
+    if (insertError) throw insertError;
+
+    return {
+      message: 'Serve request submitted for approval',
+      items: serveItems,
+    };
+  }
+
+  async approve(orderId: number) {
+    // 1. fetch pending serve requests
+    const { data: serveItems, error: serveError } =
+      await this.supabase.client
+        .from('serve_items')
+        .select('*')
+        .eq('order_id', orderId)
+        .eq('status', 'pending');
+  
+    if (serveError) throw serveError;
+    if (!serveItems || serveItems.length === 0) {
+      throw new Error('No pending serve requests');
+    }
+  
+    // 2. fetch stock
+    const itemCodes = serveItems.map(i => i.item_code);
+  
+    const { data: stockData, error: stockError } =
+      await this.supabase.client
+        .from('products')
+        .select('item_code, stock')
+        .in('item_code', itemCodes);
+  
+    if (stockError) throw stockError;
+  
+    // 3. validate stock
+    for (const item of serveItems) {
+      const stock =
+        stockData.find(s => s.item_code === item.item_code)?.stock ?? 0;
+  
+      if (item.quantity_to_serve > stock) {
+        throw new Error(
+          `Insufficient stock for ${item.item_code}. Available: ${stock}`,
+        );
+      }
+    }
+  
+    // 4. subtract stock + approve serve_items (PER ITEM)
+    for (const item of serveItems) {
+      const currentStock =
+        stockData.find(s => s.item_code === item.item_code)!.stock;
+  
+      // subtract stock
+      const { error: stockUpdateError } = await this.supabase.client
+        .from('products')
+        .update({ stock: currentStock - item.quantity_to_serve })
+        .eq('item_code', item.item_code);
+  
+      if (stockUpdateError) throw stockUpdateError;
+  
+      // approve serve item
+      const { error: serveUpdateError } = await this.supabase.client
+        .from('serve_items')
+        .update({
+          quantity_to_serve: item.quantity_to_serve,
+          status: 'served',
+          updated_at: new Date(),
+        })
+        .eq('id', item.id);
+  
+      if (serveUpdateError) throw serveUpdateError;
+    }
+  
+    // 5. update order status
+    const { data: allServeItems, error: allServeItemsError } =
+      await this.supabase.client
+        .from('serve_items')
+        .select('*')
+        .eq('order_id', orderId);
+  
+    if (allServeItemsError) throw allServeItemsError;
+  
+    const fullyServed = allServeItems.every(
+      i => i.quantity_to_serve === i.quantity_ordered,
+    );
+  
+    const newStatus = fullyServed ? 'Served' : 'Partial Served';
+  
+    const { error: orderUpdateError } = await this.supabase.client
+      .from('sales_orders')
+      .update({ status: newStatus })
+      .eq('id', orderId);
+  
+    if (orderUpdateError) throw orderUpdateError;
+  
+    return { message: 'Serve request approved', status: newStatus };
+  }  
 }

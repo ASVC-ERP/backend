@@ -8,7 +8,7 @@ import {
   Param,
   Body,
   ValidationPipe,
-  Req
+  ParseIntPipe
 } from '@nestjs/common';
 import { OrderService } from './asvc-order.service';
 import { CreateSalesOrderDto } from './dto/create-order.dto';
@@ -69,5 +69,21 @@ export class OrderController {
       id,
       body.items
     );
+  }
+
+  @Post(':id/request')
+  async requestServe(
+    @Param('id', ParseIntPipe) id: number,
+    @Body()
+    body: { items: { item_code: string; quantity_to_serve: number }[] },
+  ) {
+    return this.service.request(id, body.items);
+  }
+
+  @Post(':id/approve')
+  async approve(
+    @Param('id', ParseIntPipe) id: number
+  ) {
+    return this.service.approve(id);
   }
 }
