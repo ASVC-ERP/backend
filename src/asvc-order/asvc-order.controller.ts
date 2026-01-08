@@ -54,4 +54,20 @@ export class OrderController {
     return { message: 'Order' + id + ' deleted successfully' };
   }
 
+  @Post(':id/serve')
+  async serve(
+    @Param('id') 
+      id: number,
+    @Body()
+      body: { 
+        items: { 
+          item_code: string; 
+          quantity_to_serve: number 
+        }[] },
+  ) {
+    await this.service.serve(
+      id,
+      body.items
+    );
+  }
 }

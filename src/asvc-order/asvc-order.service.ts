@@ -299,23 +299,23 @@ export class OrderService {
     return { updated: true };
   }
   
-  async delete(orderId: number) {
+  async delete(id: number) {
     // 1. Check order exists
     const { data: order, error: orderError } = await this.supabase.client
       .from('sales_orders')
       .select('id')
-      .eq('id', orderId)
+      .eq('id', id)
       .single();
   
     if (orderError || !order) {
-      throw new NotFoundException('Order' + orderId + ' not found');
+      throw new NotFoundException('Order' + id + ' not found');
     }
   
     // 2. Delete items FIRST (FK safety)
     const { error: itemsError } = await this.supabase.client
       .from('sales_order_items')
       .delete()
-      .eq('sales_order_id', orderId);
+      .eq('sales_order_id', id);
   
     if (itemsError) {
       throw new BadRequestException(itemsError.message);
@@ -325,10 +325,115 @@ export class OrderService {
     const { error: orderDeleteError } = await this.supabase.client
       .from('sales_orders')
       .delete()
-      .eq('id', orderId);
+      .eq('id', id);
   
     if (orderDeleteError) {
       throw new BadRequestException(orderDeleteError.message);
     }
+  }
+
+  async serve(
+    id: number,
+    itemsToServe: { item_code: string; quantity_to_serve: number } []
+  ) {
+    // 0. fetch the sales order
+    const { data: orderData, error: orderError } = await this.supabase.client
+      .from('sales_orders')
+      .select('id, status, approval_status')
+      .eq('id', id)
+      .single();
+    if (orderError) throw orderError;
+
+    // 0.1 check approval status
+    if (orderData.approval_status !== 'Not Required') {
+      throw new Error(
+        `Order ${id} requires approval. Cannot serve until approved.`,
+      );
+    }
+
+    // 1. fetch order items
+    const { data: orderItems, error: itemsError } = await this.supabase.client
+      .from('sales_order_items')
+      .select('*')
+      .eq('sales_order_id', id);
+    if (itemsError) throw itemsError;
+
+    // 2. fetch stock for all items
+    const itemCodes = itemsToServe.map((i) => i.item_code);
+    const { data: stockData, error: stockError } = await this.supabase.client
+      .from('products')
+      .select('item_code, stock')
+      .in('item_code', itemCodes);
+    if (stockError) throw stockError;
+
+    // 3. validate requested quantities
+    for (const item of itemsToServe) {
+      const stock =
+        stockData.find((s) => s.item_code === item.item_code)?.stock || 0;
+      const orderedQty =
+        orderItems.find((o) => o.item_code === item.item_code)?.quantity || 0;
+
+      if (item.quantity_to_serve > stock) {
+        throw new Error(
+          `Cannot serve ${item.quantity_to_serve} of ${item.item_code}. Only ${stock} in stock.`,
+        );
+      }
+
+      if (item.quantity_to_serve > orderedQty) {
+        throw new Error(
+          `Cannot serve ${item.quantity_to_serve} of ${item.item_code}. Only ${orderedQty} ordered.`,
+        );
+      }
+    }
+
+    // 4. insert or update serve_items
+    const serveItems = itemsToServe.map((item) => ({
+      order_id: id,
+      item_code: item.item_code,
+      quantity_ordered:
+        orderItems.find((o) => o.item_code === item.item_code)!.quantity,
+      quantity_to_serve: item.quantity_to_serve,
+      served_quantity: item.quantity_to_serve,
+      status: item.quantity_to_serve > 0 ? 'served' : 'cannot_serve',
+    }));
+
+    const { error: upsertError } = await this.supabase.client
+      .from('serve_items')
+      .upsert(serveItems, { onConflict: 'id' });
+    if (upsertError) throw upsertError;
+
+    // 5. subtract stock
+    for (const item of serveItems) {
+      if (item.quantity_to_serve > 0) {
+        const currentStock =
+          stockData.find((s) => s.item_code === item.item_code)!.stock;
+        const { error: updateError } = await this.supabase.client
+          .from('products')
+          .update({ stock: currentStock - item.quantity_to_serve })
+          .eq('item_code', item.item_code);
+        if (updateError) throw updateError;
+      }
+    }
+
+    // 6. update sales_orders.status if all items served
+    const servedCount = serveItems.filter((i) => i.status === 'served').length;
+
+    let newStatus = orderData.status; // default to current status
+    if (servedCount === serveItems.length) {
+      newStatus = 'Served';
+    } else if (servedCount > 0) {
+      newStatus = 'Partial Served';
+    } else {
+      newStatus = 'Cannot Serve';
+    }
+
+    const { error: orderUpdateError } = await this.supabase.client
+      .from('sales_orders')
+      .update({ status: newStatus })
+      .eq('id', id);
+
+    if (orderUpdateError) throw orderUpdateError;
+
+    return serveItems;
   }
 }
