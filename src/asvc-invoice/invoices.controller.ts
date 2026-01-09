@@ -16,11 +16,4 @@ export class InvoicesController {
   ) {
     return this.service.find(id);
   }
-
-  @Post('order/:id')
-  generate(
-    @Param('id', ParseIntPipe) id: number
-  ) {
-    return this.service.generate(id);
-  }
 }

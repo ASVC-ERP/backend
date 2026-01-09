@@ -64,11 +64,11 @@ export class OrderService {
       .insert({
         cid: dto.cid,
         sales_agent: dto.sales_agent,
-        order_date: dto.order_date,
+        order_date: new Date(),
         discount,
         total_price,
         status: 'Open',
-        approval_status
+        approval_status: approval_status
       })
       .select()
       .single();
@@ -284,6 +284,16 @@ export class OrderService {
 
 // ------------------------------------------------------------------------------------------------------------------------------------
 // Serve Functions
+// Example: 
+// Example Json: 
+/*
+  {
+    "items": [
+      {"item_code": "CJ-GMBG5213XR", "quantity_to_serve": 1},
+      {"item_code": "CJ-GMBG5281XR", "quantity_to_serve": 1}
+    ]
+  }
+*/
 // ------------------------------------------------------------------------------------------------------------------------------------
 
   async serve(
@@ -396,6 +406,8 @@ export class OrderService {
 
     return serveItems;
   }
+
+// API: localhost:3000/api/order/:id/request
 
   async request(
     id: number,
@@ -593,6 +605,7 @@ export class OrderService {
 
 // ------------------------------------------------------------------------------------------------------------------------------------
 // Invoice Functions
+// API: localhost:3000/api/order/:id/invoice
 // ------------------------------------------------------------------------------------------------------------------------------------
   async invoice(id: number) {
     // 1. fetch order

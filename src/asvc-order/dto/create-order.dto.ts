@@ -19,9 +19,6 @@ export class CreateSalesOrderDto {
   @IsString()
   sales_agent: string;
 
-  @IsString()
-  order_date: string;
-
   @IsNumber()
   discount?: number;
 
