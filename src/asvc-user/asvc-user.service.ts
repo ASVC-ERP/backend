@@ -6,11 +6,11 @@ import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly supabaseService: SupabaseService) {}
+  constructor(private readonly service: SupabaseService) {}
 
   async create(dto: CreateUserDto) {
     const hashedPassword = await bcrypt.hash(dto.password, 10);
-    const { data, error } = await this.supabaseService.client
+    const { data, error } = await this.service.client
       .from('users')
       .insert([{ ...dto, password: hashedPassword }])
       .select();
@@ -20,7 +20,7 @@ export class UsersService {
   }
 
   async read() {
-    const { data, error } = await this.supabaseService.client
+    const { data, error } = await this.service.client
       .from('users')
       .select('*');
 
@@ -29,7 +29,7 @@ export class UsersService {
   }
 
   async read_one(id: number) {
-    const { data, error } = await this.supabaseService.client
+    const { data, error } = await this.service.client
       .from('users')
       .select('*')
       .eq('id', id)
@@ -43,7 +43,7 @@ export class UsersService {
     if (dto.password) {
       dto.password = await bcrypt.hash(dto.password, 10);
     }
-    const { data, error } = await this.supabaseService.client
+    const { data, error } = await this.service.client
       .from('users')
       .update(dto)
       .eq('id', id)
@@ -54,7 +54,7 @@ export class UsersService {
   }
 
   async delete(id: number) {
-    const { error } = await this.supabaseService.client
+    const { error } = await this.service.client
       .from('users')
       .delete()
       .eq('id', id);

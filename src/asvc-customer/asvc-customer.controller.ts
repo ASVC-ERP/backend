@@ -18,20 +18,20 @@ export class CustomerController {
   }
 
   @Get(':id')
-  async read_one(@Param('id') id: string) {
+  async read_one(@Param('id') id: number) {
     return this.customerService.read_one(Number(id));
   }
 
   @Put(':id')
   async update(
-    @Param('id') id: string,
+    @Param('id') id: number,
     @Body(new ValidationPipe()) dto: UpdateCustomerDto,
   ) {
     return this.customerService.update(Number(id), dto);
   }
 
   @Delete(':id')
-  async delete(@Param('id') id: string) {
+  async delete(@Param('id') id: number) {
     return this.customerService.delete(Number(id));
   }
 }

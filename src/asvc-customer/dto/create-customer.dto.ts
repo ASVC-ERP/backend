@@ -24,8 +24,4 @@ export class CreateCustomerDto {
   @IsOptional()
   @IsString()
   pic?: string;
-
-  @IsOptional()
-  @IsString()
-  cid?: string;
 }

@@ -10,19 +10,53 @@ export class CustomerService {
   private table = 'customers';
 
   async create(dto: CreateCustomerDto) {
+    // 1. Get last CID
+    const { data: lastCustomer, error: lastError } =
+    await this.supabaseService.client
+      .from(this.table)
+      .select('cid')
+      .order('id', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (lastError && lastError.code !== 'PGRST116') {
+      throw new Error(lastError.message);
+    }
+
+    // 2. Compute next CID
+    let nextNumber = 1;
+
+    if (lastCustomer?.cid) {
+      const match = lastCustomer.cid.match(/CUST-(\d+)/);
+      if (match) {
+        nextNumber = parseInt(match[1], 10) + 1;
+      }
+    }
+
+    const cid = `CUST-${String(nextNumber).padStart(3, '0')}`;
+
+    // 3. Insert customer
     const { data, error } = await this.supabaseService.client
       .from(this.table)
-      .insert([dto])
-      .select();
+      .insert([
+        {
+          ...dto,
+          cid,
+        },
+      ])
+      .select()
+      .single();
 
     if (error) throw new Error(error.message);
-    return data?.[0] ?? null;
+
+    return data;
   }
 
   async read() {
     const { data, error } = await this.supabaseService.client
       .from(this.table)
-      .select('*');
+      .select('*')
+      .order('cid', { ascending: true });
 
     if (error) throw new Error(error.message);
     return data;
@@ -40,6 +74,7 @@ export class CustomerService {
   }
 
   async update(id: number, dto: UpdateCustomerDto) {
+    console.log(id);
     const { data, error } = await this.supabaseService.client
       .from(this.table)
       .update(dto)

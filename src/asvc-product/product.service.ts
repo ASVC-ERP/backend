@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, InternalServerErrorException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
@@ -20,6 +20,34 @@ export class ProductService {
   }
 
   // READ ALL
+  async find_by_page(page = 1, limit = 500) {
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
+
+    console.log({ page, limit, from, to });
+
+    const { data, error, count } = await this.supabase.client
+      .from('products')
+      .select('*', { count: 'exact' })
+      .order('id', { ascending: true }) 
+      .range(from, to);
+
+    if (error) {
+      throw new InternalServerErrorException(error.message);
+    }
+
+    return {
+      data,
+      meta: {
+        page,
+        limit,
+        total: count ?? 0,
+        totalPages: Math.ceil((count ?? 0) / limit),
+      },
+    };
+  }
+
+  /*
   async findAll() {
     const { data, error } = await this.supabase.client
       .from('products')
@@ -29,6 +57,7 @@ export class ProductService {
     if (error) throw error;
     return data;
   }
+  */
 
   // READ ONE
   async find(id: number) {
