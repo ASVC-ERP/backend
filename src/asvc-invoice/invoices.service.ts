@@ -1,5 +1,6 @@
-import { Injectable, BadRequestException, } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException} from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
+import { UpdateSalesInvoiceDto } from './dto/update-invoice.dto';
 
 @Injectable()
 export class InvoicesService {
@@ -23,6 +24,7 @@ export class InvoicesService {
         total_price,
         waybill_number,
         courier,
+        shipping_date,
         invoice_date,
         invoice_number,
         created_at,
@@ -49,6 +51,32 @@ export class InvoicesService {
       invoice_date: data.invoice_date,
       waybill_number: data.waybill_number,
       courier: data.courier,
+      shipping_date: data.shipping_date,
     };
   }
+
+  // sales-invoices.service.ts
+  async update(
+    id: number,
+    dto: UpdateSalesInvoiceDto,
+  ) {
+    const { data, error } = await this.supabase.client
+      .from('sales_invoices')
+      .update(dto)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      // handles unique invoice_number violation too
+      throw new BadRequestException(error.message);
+    }
+
+    if (!data) {
+      throw new NotFoundException('Sales invoice not found');
+    }
+
+    return data;
+  }
+
 }

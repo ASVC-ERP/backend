@@ -15,6 +15,11 @@ export class ProductController {
   }
 
   @Get()
+  find_all() {
+    return this.service.find_all();
+  }
+
+  @Get('page/')
   async find_by_page(
     @Query('page') page = '1',
     @Query('limit') limit = '500',

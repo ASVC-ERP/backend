@@ -38,6 +38,20 @@ export class OrderController {
     return this.service.find(id);
   }
 
+  @Get(':id/order-items')
+  find_order_items(
+    @Param('id') id: number
+  ) {
+    return this.service.find_order_items(id);
+  }
+
+  @Get(':id/serve-items')
+  find_serve_items(
+    @Param('id') id: number
+  ) {
+    return this.service.find_serve_items(id);
+  }
+
   @Patch(':id')
   update(
     @Param('id') id: number,

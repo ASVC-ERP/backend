@@ -1,5 +1,6 @@
-import { Controller, Post, Param, Get, Delete, Patch, ParseIntPipe } from '@nestjs/common';
+import { Controller, Post, Get, Delete, Patch,  Body, Param, ParseIntPipe } from '@nestjs/common';
 import { InvoicesService } from './invoices.service';
+import { UpdateSalesInvoiceDto } from './dto/update-invoice.dto';
 
 @Controller('invoices')
 export class InvoicesController {
@@ -15,5 +16,13 @@ export class InvoicesController {
     @Param('id') id: number
   ) {
     return this.service.find(id);
+  }
+
+  @Patch(':id')
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateSalesInvoiceDto,
+  ) {
+    return this.service.update(id, dto);
   }
 }

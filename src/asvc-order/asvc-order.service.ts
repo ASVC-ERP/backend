@@ -189,6 +189,29 @@ export class OrderService {
     };
   }
 
+  async find_serve_items(id: number) {
+    const { data, error } = await this.supabase.client
+      .from('serve_items')
+      .select('*')
+      .eq('order_id', id)
+  
+    if (error) throw error;
+
+    return data;
+  }
+
+  async find_order_items(id: number) {
+    console.log(id);
+    const { data, error } = await this.supabase.client
+      .from('sales_order_items')
+      .select('*')
+      .eq('sales_order_id', id)
+  
+    if (error) throw error;
+
+    return data;
+  }
+
   async update(id: number, dto: UpdateSalesOrderDto) {
     // 1. Ensure order exists
     const { data: order, error: findError } = await this.supabase.client
@@ -412,7 +435,7 @@ export class OrderService {
   async request(
     id: number,
     items: { item_code: string; quantity_to_serve: number }[],
-  ) {
+  ) { 
     // 1. fetch order
     const { data: order, error: orderError } = await this.supabase.client
       .from('sales_orders')
@@ -425,7 +448,7 @@ export class OrderService {
     // 0.2 check status
     if (order.status !== 'Open') {
       throw new Error(
-        `Order ${id} is closed. Cannot proceed to serve.`,
+        `Order ${id} is not Open. Cannot proceed to serve.`,
       );
     }
 
@@ -469,6 +492,14 @@ export class OrderService {
       .insert(serveItems);
 
     if (insertError) throw insertError;
+
+    // 5. update order status to "For Approval"
+    const { error: statusError } = await this.supabase.client
+    .from('sales_orders')
+    .update({ status: 'For Approval' })
+    .eq('id', id);
+
+    if (statusError) throw statusError;
 
     return {
       message: 'Serve request submitted for approval',

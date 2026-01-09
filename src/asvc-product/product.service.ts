@@ -21,6 +21,19 @@ export class ProductService {
     return data;
   }
 
+  async find_all() {
+    const { data, error } = await this.supabase.client
+      .from('products')
+      .select('*', { count: 'exact' })
+      .order('id', { ascending: true }) 
+
+    if (error) {
+      throw new InternalServerErrorException(error.message);
+    }
+
+    return data;
+  }
+
   // READ ALL
   async find_by_page(page = 1, limit = 500) {
     const from = (page - 1) * limit;
