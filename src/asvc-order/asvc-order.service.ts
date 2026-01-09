@@ -648,6 +648,8 @@ export class OrderService {
 
     if (orderItemsError) throw orderItemsError;
 
+    const order_invoice = `INV-${order.order_code}`
+
     // 5. create invoice
     const { data: invoice, error: invoiceError } =
       await this.supabase.client
@@ -657,6 +659,7 @@ export class OrderService {
           cid: order.cid,
           sales_agent: order.sales_agent,
           invoice_date: new Date(),
+          order_invoice: order_invoice,
         })
         .select()
         .single();

@@ -80,6 +80,8 @@ export class InvoicesService {
       throw new BadRequestException('No order items found');
     }
 
+    const order_Invoice = `INV-${order.order_code}`;
+
     /* 3️⃣ Create invoice */
     const { data: invoice, error: invoiceError } = await sb
       .from('sales_invoices')

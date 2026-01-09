@@ -1,7 +1,9 @@
-import { Injectable, NotFoundException, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, NotFoundException, InternalServerErrorException, BadRequestException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { AdjustStockDto } from './dto/adjust-stock.dto';
+import { AdjustPriceDto } from './dto/adjust-price.dto';
 
 @Injectable()
 export class ProductService {
@@ -47,18 +49,6 @@ export class ProductService {
     };
   }
 
-  /*
-  async findAll() {
-    const { data, error } = await this.supabase.client
-      .from('products')
-      .select('*')
-      .order('item_name');
-
-    if (error) throw error;
-    return data;
-  }
-  */
-
   // READ ONE
   async find(id: number) {
     const { data, error } = await this.supabase.client
@@ -87,6 +77,48 @@ export class ProductService {
       throw new NotFoundException('Product not found');
     }
 
+    return data;
+  }
+
+  async adjust_stock(id: number, dto: AdjustStockDto) {
+    const { data: product } = await this.supabase.client
+      .from('products')
+      .select('stock')
+      .eq('id', id)
+      .single();
+  
+    if (!product) throw new NotFoundException('Product not found');
+  
+    const newStock = product.stock + dto.quantity;
+  
+    if (newStock < 0) {
+      throw new BadRequestException('Stock cannot be negative');
+    }
+  
+    const { data, error } = await this.supabase.client
+      .from('products')
+      .update({ stock: newStock })
+      .eq('id', id)
+      .select()
+      .single();
+  
+    if (error) throw error;
+  
+    return data;
+  }
+
+  async adjust_price(id: number, dto: AdjustPriceDto) {
+    const { data, error } = await this.supabase.client
+      .from('products')
+      .update({ price4: dto.price4 })
+      .eq('id', id)
+      .select()
+      .single();
+  
+    if (error || !data) {
+      throw new NotFoundException('Product not found');
+    }
+  
     return data;
   }
 

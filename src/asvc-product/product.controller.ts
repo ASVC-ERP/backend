@@ -2,6 +2,8 @@ import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestj
 import { ProductService } from './product.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { AdjustStockDto } from './dto/adjust-stock.dto';
+import { AdjustPriceDto } from './dto/adjust-price.dto';
 
 @Controller('product')
 export class ProductController {
@@ -23,13 +25,6 @@ export class ProductController {
     );
   }
 
-  /*
-  @Get()
-  findAll() {
-    return this.service.findAll();
-  }
-  */
-
   @Get(':id')
   find(@Param('id') id: string) {
     return this.service.find(+id);
@@ -41,6 +36,22 @@ export class ProductController {
     @Body() dto: UpdateProductDto,
   ) {
     return this.service.update(+id, dto);
+  }
+
+  @Patch(':id/stock')
+  adjust_stock(
+    @Param('id') id: string,
+    @Body() dto: AdjustStockDto,
+  ) {
+    return this.service.adjust_stock(+id, dto);
+  }
+
+  @Patch(':id/price')
+  adjust_price(
+    @Param('id') id: string,
+    @Body() dto: AdjustPriceDto,
+  ) {
+    return this.service.adjust_price(+id, dto);
   }
 
   @Delete(':id')
