@@ -20,8 +20,4 @@ export class CreateSupplierDto {
   @IsOptional()
   @IsString()
   number?: string;
-
-  @IsOptional()
-  @IsString()
-  tin?: string;
 }

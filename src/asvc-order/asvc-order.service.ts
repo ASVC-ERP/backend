@@ -9,6 +9,7 @@ export class OrderService {
 
 // ------------------------------------------------------------------------------------------------------------------------------------
 // CRUD Functions
+// API: localhost:3000/api/order
 // ------------------------------------------------------------------------------------------------------------------------------------
 
   async create(dto: CreateSalesOrderDto) {
@@ -305,10 +306,14 @@ export class OrderService {
     }
   }
 
+
+
+
+
 // ------------------------------------------------------------------------------------------------------------------------------------
 // Serve Functions
-// Example: 
-// Example Json: 
+// API: localhost:3000/api/order/:id/serve
+// Payload:
 /*
   {
     "items": [
@@ -318,7 +323,8 @@ export class OrderService {
   }
 */
 // ------------------------------------------------------------------------------------------------------------------------------------
-
+// OLD SERVE FUNCTION. THIS IS TO PROTECT DATA INTEGRITY IN CASE SERVE FAILS HALFWAY.
+/*
   async serve(
     id: number,
     itemsToServe: { item_code: string; quantity_to_serve: number } []
@@ -429,9 +435,29 @@ export class OrderService {
 
     return serveItems;
   }
+*/
+  async serve(id: number, itemsToServe: any[]) {
+    console.log(id);
+    const { data, error } = await this.supabase.client.rpc(
+      'serve_sales_order',
+      {
+        p_order_id: id,
+        p_items: itemsToServe,
+      },
+    );
 
+    if (error) throw error;
+
+    return data;
+  }
+
+
+// ------------------------------------------------------------------------------------------------------------------------------------
+// Request Functions
 // API: localhost:3000/api/order/:id/request
-
+// ------------------------------------------------------------------------------------------------------------------------------------
+// OLD REQUEST FUNCTION. THIS IS TO PROTECT DATA INTEGRITY IN CASE REQUEST FAILS HALFWAY.
+/*
   async request(
     id: number,
     items: { item_code: string; quantity_to_serve: number }[],
@@ -506,7 +532,34 @@ export class OrderService {
       items: serveItems,
     };
   }
+*/
 
+  async request(
+    id: number,
+    items: { item_code: string; quantity_to_serve: number }[],
+  ) {
+    const { data, error } = await this.supabase.client.rpc(
+      'request_serve_sales_order',
+      {
+        p_order_id: id,
+        p_items: items,
+      },
+    );
+  
+    if (error) throw error;
+  
+    return {
+      message: 'Serve request submitted for approval',
+      data,
+    };
+  }
+
+// ------------------------------------------------------------------------------------------------------------------------------------
+// Approve Functions
+// API: localhost:3000/api/order/:id/approve
+// ------------------------------------------------------------------------------------------------------------------------------------
+//OLD APPROVE FUNCTION. THIS IS TO PROTECT DATA INTEGRITY IN CASE APPROVE FAILS HALFWAY.
+/*
   async approve(id: number) {
     // 1. fetch pending serve requests
     const { data: serveItems, error: serveError } =
@@ -594,7 +647,27 @@ export class OrderService {
   
     return { message: 'Serve request approved', status: newStatus };
   }
+*/
+  async approve(id: number) {
+    const { data, error } = await this.supabase.client.rpc(
+      'approve_serve_sales_order',
+      { p_order_id: id },
+    );
 
+    if (error) throw error;
+
+    return {
+      message: 'Serve request approved',
+      ...data,
+    };
+  }
+
+// ------------------------------------------------------------------------------------------------------------------------------------
+// Reject Functions
+// API: localhost:3000/api/order/:id/reject
+// ------------------------------------------------------------------------------------------------------------------------------------
+//OLD REJECT FUNCTION. THIS IS TO PROTECT DATA INTEGRITY IN CASE REJECT FAILS HALFWAY.
+/*
   async reject(id: number) {
     // 1. verify pending serve requests exist
     const { data: pendingItems, error: pendingError } =
@@ -633,11 +706,29 @@ export class OrderService {
       status: 'Open',
     };
   }
+*/
+async reject(id: number) {
+  const { data, error } = await this.supabase.client.rpc(
+    'reject_serve_sales_order',
+    { p_order_id: id },
+  );
+
+  if (error) throw error;
+
+  return {
+    message: 'Serve request rejected',
+    ...data,
+  };
+}
+
+
 
 // ------------------------------------------------------------------------------------------------------------------------------------
 // Invoice Functions
 // API: localhost:3000/api/order/:id/invoice
 // ------------------------------------------------------------------------------------------------------------------------------------
+// OLD INVOICE FUNCTION. THIS IS TO PROTECT DATA INTEGRITY IN CASE INVOICE FAILS HALFWAY.
+/*
   async invoice(id: number) {
     // 1. fetch order
     const { data: order, error: orderError } =
@@ -749,5 +840,16 @@ export class OrderService {
       invoice_id: invoice.id,
       total_price: totalPrice,
     };
+  }
+*/
+  async invoice(id: number) {
+    const { data, error } = await this.supabase.client.rpc(
+      'create_sales_invoice',
+      { p_order_id: id },
+    );
+
+    if (error) throw error;
+
+    return data;
   }
 }
