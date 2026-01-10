@@ -23,6 +23,7 @@ import { ProductModule } from './asvc-product/product.module';
 import { InvoicesModule } from './asvc-invoice/invoices.module';
 import { AuthenticationModule } from './asvc-auth/asvc-auth.module';
 import { SupplierInvoiceModule } from './asvc-supplier-invoice/supplier-invoice.module';
+import { PrintModule } from './asvc-print/asvc-print.module';
 
 @Module({
   imports: [
@@ -56,6 +57,7 @@ import { SupplierInvoiceModule } from './asvc-supplier-invoice/supplier-invoice.
     InvoicesModule,
     AuthenticationModule,
     SupplierInvoiceModule,
+    PrintModule,
   ]
 })
 export class AppModule {}

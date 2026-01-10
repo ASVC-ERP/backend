@@ -41,54 +41,54 @@ export class SupplierInvoiceService {
     }
 
     async post_invoice(id: number) {
-        // 1. Fetch invoice
-        const { data: invoice, error: invoiceError } =
-          await this.supabase.client
-            .from('supplier_invoices')
-            .select('id, status')
-            .eq('id', id)
-            .single();
-      
-        if (invoiceError || !invoice) {
-          throw new NotFoundException('Invoice not found');
-        }
-      
-        if (invoice.status !== 'Pending') {
-          throw new BadRequestException('Invoice already posted');
-        }
-      
-        // 2. Fetch invoice items
-        const { data: items, error: itemsError } =
-          await this.supabase.client
-            .from('supplier_invoice_items')
-            .select('product_id, quantity')
-            .eq('invoice_id', id);
-      
-        if (itemsError || !items.length) {
-          throw new BadRequestException('No invoice items found');
-        }
-      
-        // 3. Add stock to products
-        for (const item of items) {
-          const { error: stockError } = await this.supabase.client
-            .rpc('increment_product_stock', {
-              p_product_id: item.product_id,
-              p_qty: item.quantity,
-            });
-      
-          if (stockError) throw stockError;
-        }
-      
-        // 4. Mark invoice as POSTED
-        const { error: updateError } = await this.supabase.client
+      // 1. Fetch invoice
+      const { data: invoice, error: invoiceError } =
+        await this.supabase.client
           .from('supplier_invoices')
-          .update({ status: 'Posted' })
-          .eq('id', id);
-      
-        if (updateError) throw updateError;
-      
-        return { posted: true };
+          .select('id, status')
+          .eq('id', id)
+          .single();
+    
+      if (invoiceError || !invoice) {
+        throw new NotFoundException('Invoice not found');
       }
+    
+      if (invoice.status !== 'Pending') {
+        throw new BadRequestException('Invoice already posted');
+      }
+    
+      // 2. Fetch invoice items
+      const { data: items, error: itemsError } =
+        await this.supabase.client
+          .from('supplier_invoice_items')
+          .select('product_id, quantity')
+          .eq('invoice_id', id);
+    
+      if (itemsError || !items.length) {
+        throw new BadRequestException('No invoice items found');
+      }
+    
+      // 3. Add stock to products
+      for (const item of items) {
+        const { error: stockError } = await this.supabase.client
+          .rpc('increment_product_stock', {
+            p_product_id: item.product_id,
+            p_qty: item.quantity,
+          });
+    
+        if (stockError) throw stockError;
+      }
+    
+      // 4. Mark invoice as POSTED
+      const { error: updateError } = await this.supabase.client
+        .from('supplier_invoices')
+        .update({ status: 'Posted' })
+        .eq('id', id);
+    
+      if (updateError) throw updateError;
+    
+      return { posted: true };
+    }
       
     
     async findAll() {
