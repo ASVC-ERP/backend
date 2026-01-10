@@ -35,7 +35,7 @@ export class ProductService {
   }
 
   // READ ALL
-  async find_by_page(page = 1, limit = 500) {
+  async find_by_page(page = 1, limit = 1000) {
     const from = (page - 1) * limit;
     const to = from + limit - 1;
 

@@ -158,16 +158,38 @@ export class OrderService {
         approval_status,
         created_at,
         customers (
+          id,
           cid,
           name,
           address,
-          number
+          number,
+          tin,
+          terms,
+          pic
         ),
         sales_order_items (
-          id,
-          item_code,
+          serve_items (
+            quantity_to_serve,
+            status
+          ),
           quantity,
-          price
+          price,
+          products (
+            item_code,
+            item_name,
+            brand,
+            origin,
+            unit,
+            model,
+            part_num,
+            internal_num,
+            min_stock,
+            stock,
+            price1,
+            price2,
+            price3,
+            price4
+          )
         )
       `)
       .eq('id', id)

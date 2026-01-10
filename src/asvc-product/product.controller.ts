@@ -22,7 +22,7 @@ export class ProductController {
   @Get('page/')
   async find_by_page(
     @Query('page') page = '1',
-    @Query('limit') limit = '500',
+    @Query('limit') limit = '1000',
   ) {
     return this.service.find_by_page(
       Number(page),
