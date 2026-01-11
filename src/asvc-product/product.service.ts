@@ -81,8 +81,7 @@ export class ProductService {
     const { data, error } = await this.supabase.client
       .from('products')
       .select('*')
-      .eq('item_name', item_name)
-      .single();
+      .ilike('item_name', `%${item_name}%`)
 
     if (error) {
       throw new BadRequestException(error.message);

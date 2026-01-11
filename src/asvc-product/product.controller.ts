@@ -19,8 +19,8 @@ export class ProductController {
     return this.service.find_all();
   }
 
-  @Get('details/:item_name')
-  async get_details(@Param('item_name') item_name: string) {
+  @Get('details')
+  get_details(@Query('item_name') item_name: string) {
     return this.service.get_details(item_name);
   }
 
