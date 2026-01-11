@@ -122,8 +122,7 @@ export class SupplierInvoiceService {
               subtotal
           )
           `)
-          .eq('supplier_id', supplier_id)
-          .single();
+          .eq('supplier_id', supplier_id);
 
       if (error || !data) {
           throw new NotFoundException('Supplier ID not found');
