@@ -99,7 +99,6 @@ export class SupplierInvoiceService {
                 id,
                 product_id,
                 quantity,
-                unit,
                 unit_cost,
                 subtotal
             )
@@ -119,7 +118,6 @@ export class SupplierInvoiceService {
                 id,
                 product_id,
                 quantity,
-                unit,
                 unit_cost,
                 subtotal
             )

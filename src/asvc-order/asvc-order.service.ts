@@ -47,7 +47,7 @@ export class OrderService {
     );
 
     const discount = dto.discount ?? 0;
-    const total_price = subtotal - discount;
+    const total_price = Number((subtotal - discount).toFixed(2));;
     
     const { data: user, error: userError } = await this.supabase.client
       .from('users')
