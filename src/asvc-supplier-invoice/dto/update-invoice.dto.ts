@@ -25,6 +25,10 @@ class UpdateSupplierInvoiceItemDto {
   export class UpdateSupplierInvoiceDto {
     @IsOptional()
     @IsString()
+    invoice_number?: string;
+    
+    @IsOptional()
+    @IsString()
     po_number?: string;
   
     @IsOptional()

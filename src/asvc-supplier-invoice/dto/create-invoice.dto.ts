@@ -7,15 +7,15 @@ export class CreateSupplierInvoiceItemDto {
 
     @IsNumber()
     quantity: number;
-
-    @IsString()
-    unit?: string;
     
     @IsNumber()
     unit_cost: number;
 }
 
 export class CreateSupplierInvoiceDto {
+    @IsString()
+    invoice_number: string;
+
     @IsString()
     po_number: string;
 

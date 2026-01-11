@@ -77,6 +77,20 @@ export class ProductService {
     return data;
   }
 
+  async get_details(item_name: string) {
+    const { data, error } = await this.supabase.client
+      .from('products')
+      .select('*')
+      .eq('item_name', item_name)
+      .single();
+
+    if (error) {
+      throw new BadRequestException(error.message);
+    }
+
+    return data;
+  }
+
   // UPDATE
   async update(id: number, dto: UpdateProductDto) {
     const { data, error } = await this.supabase.client

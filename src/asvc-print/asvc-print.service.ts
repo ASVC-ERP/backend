@@ -5,17 +5,12 @@ import { SupabaseService } from '../supabase/supabase.service';
 export class PrintService {
   constructor(private readonly service: SupabaseService) {}
 
-  private get client() {
-    return this.service.client;
-  }
-
-// ------------------------------------------------------------------------------------------------------------------------------------
-// Sales-Order Print Functions
-// API: /api/print/sales-order/:id
-// ------------------------------------------------------------------------------------------------------------------------------------
+  // ------------------------------------------------------------------------------------------------------------------------------------
+  // Sales-Order Get Function
+  // ------------------------------------------------------------------------------------------------------------------------------------
   async read_so(id: number) {
     console.log(id);
-    const { data, error } = await this.client
+    const { data, error } = await this.service.client
       .from('sales_orders')
       .select(`
         id,
@@ -61,12 +56,11 @@ export class PrintService {
     };
   }
 
-// ------------------------------------------------------------------------------------------------------------------------------------
-// Packing List Functions
-// API: /api/print/packing-list/:id
-// ------------------------------------------------------------------------------------------------------------------------------------  
+  // ------------------------------------------------------------------------------------------------------------------------------------
+  // Packing List Get Function
+  // ------------------------------------------------------------------------------------------------------------------------------------  
   async read_pl(orderId: number) {
-    const { data, error } = await this.client
+    const { data, error } = await this.service.client
       .from('sales_orders')
       .select(`
         order_date,
@@ -104,4 +98,55 @@ export class PrintService {
       })),
     };
   }
+
+  async read_dr(id: number) {
+    const { data, error } = await this.service.client
+      .from('sales_invoices')
+      .select(`
+        id,
+        invoice_number,
+        invoice_date,
+        waybill_number,
+        shipping_date,
+        courier,
+        sales_orders (
+          id,
+          order_code,
+          customers (
+            name,
+            address,
+            tin
+          )
+        ),
+        sales_invoice_items (
+          quantity,
+          price,
+          products (
+            item_name,
+            unit
+          )
+        )
+      `)
+      .eq('id', id)
+      .single();
+
+    if (error) throw error;
+
+    return {
+      drNo: data.invoice_number ?? "",
+      date: data.shipping_date ?? data.invoice_date,
+      waybill: data.waybill_number ?? "",
+      courier: data.courier,
+      customerName: data.sales_orders.customers.name,
+      customerAddress: data.sales_orders.customers.address,
+      customerTIN: data.sales_orders.customers.tin,
+      items: data.sales_invoice_items.map(i => ({
+        quantity: i.quantity,
+        unit: i.products.unit,
+        itemName: i.products.item_name,
+        price: i.price,
+      })),
+    };
+  }
+
 }

@@ -10,13 +10,18 @@ export class ProductController {
   constructor(private readonly service: ProductService) {}
 
   @Post()
-  create(@Body() dto: CreateProductDto) {
+  async create(@Body() dto: CreateProductDto) {
     return this.service.create(dto);
   }
 
   @Get()
-  find_all() {
+  async find_all() {
     return this.service.find_all();
+  }
+
+  @Get('details/:item_name')
+  async get_details(@Param('item_name') item_name: string) {
+    return this.service.get_details(item_name);
   }
 
   @Get('page/')

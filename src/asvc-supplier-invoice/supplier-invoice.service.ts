@@ -26,7 +26,6 @@ export class SupplierInvoiceService {
             invoice_id: invoice.id,
             product_id: item.product_id,
             quantity: item.quantity,
-            unit: item.unit,
             unit_cost: item.unit_cost,
             subtotal: item.quantity * item.unit_cost
         }));
