@@ -108,8 +108,31 @@ export class SupplierInvoiceService {
         if (error) throw error;
         return data;
     }
+
+    async find_by_sid(supplier_id: number) {
+      const { data, error } = await this.supabase.client
+          .from('supplier_invoices')
+          .select(`
+          *,
+          supplier_invoice_items (
+              id,
+              product_id,
+              quantity,
+              unit_cost,
+              subtotal
+          )
+          `)
+          .eq('supplier_id', supplier_id)
+          .single();
+
+      if (error || !data) {
+          throw new NotFoundException('Supplier ID not found');
+      }
+
+      return data;
+  }
     
-    async find(id: number) {
+    async find_by_id(id: number) {
         const { data, error } = await this.supabase.client
             .from('supplier_invoices')
             .select(`

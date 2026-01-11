@@ -23,11 +23,18 @@ export class SupplierInvoiceController {
     return this.service.findAll();
   }
 
-  @Get(':id')
-  find(
+  @Get('sid/:supplier_id')
+  find_by_sid(
+    @Param('supplier_id') supplier_id: number
+  ) {
+    return this.service.find_by_sid(supplier_id);
+  }
+
+  @Get('id/:id')
+  find_by_id(
     @Param('id') id: number
   ) {
-    return this.service.find(id);
+    return this.service.find_by_id(id);
   }
 
   @Patch(':id')
