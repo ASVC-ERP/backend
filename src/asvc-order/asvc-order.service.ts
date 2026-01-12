@@ -53,11 +53,11 @@ export class OrderService {
       .from('users')
       .select('role')
       .eq('username', dto.sales_agent)
-      .single();
+      .maybeSingle();
 
     if (userError) throw userError;
 
-    const approval_status = user.role === 'admin' ? 'Not Required' : 'Required';
+    const approval_status = user?.role === 'admin' ? 'Not Required' : 'Required';
 
     // 2. create sales order
     const { data: order, error } = await this.supabase.client
@@ -82,11 +82,12 @@ export class OrderService {
         .from('sales_orders')
         .select('order_code')
         .not('order_code', 'is', null)
-        .order('created_at', { ascending: false })
+        .order('order_code', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
     if (lastError && lastError.code !== 'PGRST116') {
+      console.log(error);
       throw lastError;
     }
 
@@ -95,6 +96,7 @@ export class OrderService {
 
     if (lastOrder?.order_code) {
       const match = lastOrder.order_code.match(/\d+$/);
+      console.log(match);
       if (match) {
         nextNumber = parseInt(match[0], 10) + 1;
       }
@@ -134,7 +136,7 @@ export class OrderService {
     const { data, error } = await this.supabase.client
       .from('sales_orders')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('order_code', { ascending: false });
 
     if (error) throw error;
     return data;
