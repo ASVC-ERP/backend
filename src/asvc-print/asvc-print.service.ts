@@ -41,13 +41,15 @@ export class PrintService {
       throw new NotFoundException('Sales order not found');
     }
 
+    const udata = data as any;
+
     return {
       orderId: data.order_code ?? '',
       date: data.order_date,
-      customerName: data.customers?.name ?? '',
-      customerAddress: data.customers?.address ?? '',
-      customerTIN: data.customers?.tin ?? '',
-      orderedItems: data.sales_order_items.map(item => ({
+      customerName: udata.customers?.name ?? '',
+      customerAddress: udata.customers?.address ?? '',
+      customerTIN: udata.customers?.tin ?? '',
+      orderedItems: udata.sales_order_items.map(item => ({
         itemName: item.products?.item_name ?? '',
         quantity: item.quantity,
         unit: item.products?.unit ?? '',
@@ -85,12 +87,14 @@ export class PrintService {
       throw new NotFoundException('Sales order not found');
     }
 
+    const udata = data as any;
+
     return {
       date: data.order_date,
-      customerName: data.customers?.name ?? '',
-      customerAddress: data.customers?.address ?? '',
-      customerTIN: data.customers?.tin ?? '',
-      items: data.sales_order_items.map(item => ({
+      customerName: udata.customers?.name ?? '',
+      customerAddress: udata.customers?.address ?? '',
+      customerTIN: udata.customers?.tin ?? '',
+      items: udata.sales_order_items.map(item => ({
         itemName: item.products?.item_name ?? '',
         quantity: item.quantity,
         unit: item.products?.unit ?? '',
@@ -132,15 +136,17 @@ export class PrintService {
 
     if (error) throw error;
 
+    const udata = data as any;
+
     return {
       drNo: data.invoice_number ?? "",
       date: data.shipping_date ?? data.invoice_date,
       waybill: data.waybill_number ?? "",
       courier: data.courier,
-      customerName: data.sales_orders.customers.name,
-      customerAddress: data.sales_orders.customers.address,
-      customerTIN: data.sales_orders.customers.tin,
-      items: data.sales_invoice_items.map(i => ({
+      customerName: udata.sales_orders.customers.name,
+      customerAddress: udata.sales_orders.customers.address,
+      customerTIN: udata.sales_orders.customers.tin,
+      items: udata.sales_invoice_items.map(i => ({
         quantity: i.quantity,
         unit: i.products.unit,
         itemName: i.products.item_name,
