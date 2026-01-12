@@ -90,6 +90,23 @@ export class ProductService {
     return data;
   }
 
+  async search(search: string) {
+    const { data, error } = await this.supabase.client
+      .from('products')
+      .select('*')
+      .or(
+        `item_name.ilike.%${search}%,item_code.ilike.%${search}%`
+      )
+      .order('item_name', { ascending: true })
+      .limit(20);
+
+    if (error) {
+      throw new BadRequestException(error.message);
+    }
+
+    return data;
+  }
+
   // UPDATE
   async update(id: number, dto: UpdateProductDto) {
     const { data, error } = await this.supabase.client

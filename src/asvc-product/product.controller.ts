@@ -24,6 +24,11 @@ export class ProductController {
     return this.service.get_details(item_name);
   }
 
+  @Get('search')
+  searchProducts(@Query('q') q: string) {
+    return this.service.search(q);
+  }
+
   @Get('page/')
   async find_by_page(
     @Query('page') page = '1',
