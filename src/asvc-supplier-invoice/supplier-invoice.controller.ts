@@ -37,6 +37,11 @@ export class SupplierInvoiceController {
     return this.service.find_by_id(id);
   }
 
+  @Get('costs/:productId')
+  getCosts(@Param('productId', ParseIntPipe) productId: number) {
+    return this.service.get_costs(productId);
+  }
+
   @Patch(':id')
   update(
     @Param('id', ParseIntPipe) id: number,

@@ -183,6 +183,26 @@ export class SupplierInvoiceService {
     return data;
   }
 
+  async get_costs(productId: number) {
+    const { data, error } = await this.supabase.client
+      .from('supplier_invoice_items')
+      .select(`
+        supplier_invoices (
+          id,
+          invoice_number,
+          purchase_date,
+          supplier_id,
+          conversion_factor
+        )
+        unit_cost
+      `)
+      .eq('product_id', productId)
+      .order('purchase_date', { foreignTable: 'supplier_invoices', ascending: false });
+
+    if (error) throw error;
+    return data;
+  }
+
   /* ================= UPDATE ================= */
   async update(id: number, dto: UpdateSupplierInvoiceDto) {
     // Ensure invoice exists
