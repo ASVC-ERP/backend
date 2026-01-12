@@ -44,6 +44,11 @@ export class OrderController {
     return this.service.find_serve_items(id);
   }
 
+  @Get(':item_code/serve-history')
+  find_serve(@Param('item_code') item_code: string) {
+    return this.service.find_serve(item_code);
+  }
+
   @Patch(':id')
   update(@Param('id') id: number, @Body() dto: UpdateSalesOrderDto) {
     return this.service.update(id, dto);

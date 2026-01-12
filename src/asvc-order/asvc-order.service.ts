@@ -223,6 +223,17 @@ export class OrderService {
     return data;
   }
 
+  async find_serve(item_code: string) {
+    const { data, error } = await this.supabase.client
+      .from('serve_items')
+      .select('order_id, quantity_ordered, quantity_to_serve')
+      .eq('item_code', item_code);
+
+    if (error) throw error;
+
+    return data;
+  }
+
   async find_order_items(id: number) {
     console.log(id);
     const { data, error } = await this.supabase.client
