@@ -100,7 +100,7 @@ export class OrderService {
       }
     }
 
-    const order_code = `ORD${nextNumber.toString().padStart(4, '0')}`;
+    const order_code = `ORD${nextNumber.toString().padStart(3, '0')}`;
 
     // 5. Update order with order_code
     const { error: updateError } = await this.supabase.client
