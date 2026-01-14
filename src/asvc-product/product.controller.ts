@@ -25,19 +25,26 @@ export class ProductController {
   }
 
   @Get('search')
-  searchProducts(@Query('q') q: string) {
+  search(@Query('q') q: string) {
     return this.service.search(q);
   }
 
   @Get('page/')
   async find_by_page(
     @Query('page') page = '1',
-    @Query('limit') limit = '1000',
+    @Query('limit') limit = '50',
+    @Query('search') search?: string
   ) {
     return this.service.find_by_page(
       Number(page),
       Number(limit),
+      search?.trim() || undefined,
     );
+  }
+
+  @Get('stock/adjust/list/:id')
+  async list_adjust(@Param('id') id: number) {
+    return this.service.list_adjust(id);
   }
 
   @Get(':id')

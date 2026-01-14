@@ -190,10 +190,11 @@ export class SupplierInvoiceService {
         supplier_invoices (
           id,
           invoice_number,
+          po_number,
           purchase_date,
           supplier_id,
           conversion_factor
-        )
+        ),
         unit_cost
       `)
       .eq('product_id', productId)
