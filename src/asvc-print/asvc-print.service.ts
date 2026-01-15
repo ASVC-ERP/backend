@@ -1,5 +1,8 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
+import { SalesOrderType } from './type/so.type';
+import { PackingListType } from './type/pl.type';
+import { DeliveryReceiptType } from './type/dr.type';
 
 @Injectable()
 export class PrintService {
@@ -41,15 +44,15 @@ export class PrintService {
       throw new NotFoundException('Sales order not found');
     }
 
-    const udata = data as any;
+    const so = data as SalesOrderType;
 
     return {
-      orderId: data.order_code ?? '',
-      date: data.order_date,
-      customerName: udata.customers?.name ?? '',
-      customerAddress: udata.customers?.address ?? '',
-      customerTIN: udata.customers?.tin ?? '',
-      orderedItems: udata.sales_order_items.map(item => ({
+      orderId: so.order_code ?? '',
+      date: so.order_date,
+      customerName: so.customers?.name ?? '',
+      customerAddress: so.customers?.address ?? '',
+      customerTIN: so.customers?.tin ?? '',
+      orderedItems: so.sales_order_items.map(item => ({
         itemName: item.products?.item_name ?? '',
         quantity: item.quantity,
         unit: item.products?.unit ?? '',
@@ -87,14 +90,14 @@ export class PrintService {
       throw new NotFoundException('Sales order not found');
     }
 
-    const udata = data as any;
+    const pl = data as PackingListType;
 
     return {
-      date: data.order_date,
-      customerName: udata.customers?.name ?? '',
-      customerAddress: udata.customers?.address ?? '',
-      customerTIN: udata.customers?.tin ?? '',
-      items: udata.sales_order_items.map(item => ({
+      date: pl.order_date,
+      customerName: pl.customers?.name ?? '',
+      customerAddress: pl.customers?.address ?? '',
+      customerTIN: pl.customers?.tin ?? '',
+      items: pl.sales_order_items.map(item => ({
         itemName: item.products?.item_name ?? '',
         quantity: item.quantity,
         unit: item.products?.unit ?? '',
@@ -136,21 +139,24 @@ export class PrintService {
 
     if (error) throw error;
 
-    const udata = data as any;
+    const row = data as DeliveryReceiptType;
+
+    const order = row.sales_orders?.[0];
+    const customer = order?.customers?.[0];
 
     return {
-      drNo: data.invoice_number ?? "",
-      date: data.shipping_date ?? data.invoice_date,
-      waybill: data.waybill_number ?? "",
-      courier: data.courier,
-      customerName: udata.sales_orders.customers.name,
-      customerAddress: udata.sales_orders.customers.address,
-      customerTIN: udata.sales_orders.customers.tin,
-      items: udata.sales_invoice_items.map(i => ({
-        quantity: i.quantity,
-        unit: i.products.unit,
-        itemName: i.products.item_name,
-        price: i.price,
+      drNo: row.invoice_number ?? '',
+      date: row.shipping_date ?? row.invoice_date,
+      waybill: row.waybill_number ?? '',
+      courier: row.courier ?? '',
+      customerName: customer?.name ?? '',
+      customerAddress: customer?.address ?? '',
+      customerTIN: customer?.tin ?? '',
+      items: row.sales_invoice_items.map(item => ({
+        quantity: item.quantity,
+        unit: item.products?.unit ?? '',
+        itemName: item.products?.item_name ?? '',
+        price: item.price,
       })),
     };
   }

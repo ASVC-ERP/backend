@@ -2,6 +2,7 @@ import { Injectable, BadRequestException, NotFoundException } from '@nestjs/comm
 import { SupabaseService } from '../supabase/supabase.service';
 import { CreateSalesOrderDto } from './dto/create-order.dto';
 import { UpdateSalesOrderDto } from './dto/update-order.dto';
+import { ServeItemRow } from './type/find_serve.type';
 
 @Injectable()
 export class OrderService {
@@ -228,12 +229,30 @@ export class OrderService {
   async find_serve(item_code: string) {
     const { data, error } = await this.supabase.client
       .from('serve_items')
-      .select('order_id, quantity_ordered, quantity_to_serve')
+      .select(`
+        id,
+        quantity_ordered,
+        quantity_to_serve,
+        sales_orders (
+          status,
+          customers (
+            name
+          )
+        )
+      `)
       .eq('item_code', item_code);
 
     if (error) throw error;
 
-    return data;
+    const result = (data as ServeItemRow[] ?? []).map(item => ({
+      serve_item_id: item.id,
+      order_status: item.sales_orders?.status ?? null,
+      customer_name: item.sales_orders?.customers?.name ?? null,
+      quantity_ordered: item.quantity_ordered,
+      quantity_to_serve: item.quantity_to_serve,
+    }));
+
+    return result;
   }
 
   async find_order_items(id: number) {
