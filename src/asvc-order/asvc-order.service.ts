@@ -26,7 +26,6 @@ export class OrderService {
 
     if (itemError) throw itemError;
 
-    // 1.1 find missing items
     const existingCodes = new Set(
       existingItems.map(i => i.item_code)
     );
@@ -41,7 +40,7 @@ export class OrderService {
       );
     }
 
-    // 1.2 compute subtotal
+    // 2. compute subtotal
     const subtotal = dto.items.reduce(
       (sum, item) => sum + item.quantity * item.price,
       0
@@ -50,6 +49,7 @@ export class OrderService {
     const discount = dto.discount ?? 0;
     const total_price = Number((subtotal - discount).toFixed(2));;
     
+    // 3. approval logic
     const { data: user, error: userError } = await this.supabase.client
       .from('users')
       .select('role')
@@ -60,7 +60,7 @@ export class OrderService {
 
     const approval_status = user?.role === 'admin' ? 'Not Required' : 'Required';
 
-    // 2. create sales order
+    // 4. create sales order
     const { data: order, error } = await this.supabase.client
       .from('sales_orders')
       .insert({
@@ -72,48 +72,12 @@ export class OrderService {
         status: 'Open',
         approval_status: approval_status
       })
-      .select()
+      .select('id, order_code')
       .single();
 
     if (error) throw error;
 
-    // 3. Get latest order_code
-    const { data: lastOrder, error: lastError } =
-      await this.supabase.client
-        .from('sales_orders')
-        .select('order_code')
-        .not('order_code', 'is', null)
-        .order('order_code', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-    if (lastError && lastError.code !== 'PGRST116') {
-      console.log(error);
-      throw lastError;
-    }
-
-    // 4. Generate next order_code
-    let nextNumber = 1;
-
-    if (lastOrder?.order_code) {
-      const match = lastOrder.order_code.match(/\d+$/);
-      console.log(match);
-      if (match) {
-        nextNumber = parseInt(match[0], 10) + 1;
-      }
-    }
-
-    const order_code = `ORD${nextNumber.toString().padStart(3, '0')}`;
-
-    // 5. Update order with order_code
-    const { error: updateError } = await this.supabase.client
-      .from('sales_orders')
-      .update({ order_code })
-      .eq('id', order.id);
-
-    if (updateError) throw updateError;
-
-    // 6. insert order items
+    // 3. insert order items
     const items = dto.items.map(item => ({
       sales_order_id: order.id,
       item_code: item.item_code,
@@ -129,7 +93,7 @@ export class OrderService {
 
     return {
       id: order.id,
-      order_code
+      order_code: order.order_code
     };
   }
 

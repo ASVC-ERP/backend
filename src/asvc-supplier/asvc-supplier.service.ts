@@ -22,7 +22,7 @@ export class SupplierService {
     const { data, error } = await this.supabase.client
       .from('supplier')
       .select('*')
-      .order('id', { ascending: true });
+      .order('sid', { ascending: true });
 
     if (error) throw new Error(error.message);
     return data;

@@ -56,7 +56,7 @@ export class CustomerService {
     const { data, error } = await this.supabaseService.client
       .from(this.table)
       .select('*')
-      .order('cid', { ascending: true });
+      .order('cid', { ascending: false });
 
     if (error) throw new Error(error.message);
     return data;
