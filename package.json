@@ -4,8 +4,8 @@
   "description": "Simple NestJS backend for Google Sheets",
   "private": true,
   "scripts": {
-    "start": "nest start",
-    "start:dev": "ts-node-dev --respawn --transpile-only src/main.ts",
+    "start": "node dist/main.js",
+    "dev": "nest start --watch",
     "build": "nest build"
   },
   "dependencies": {
@@ -29,6 +29,7 @@
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "pdfkit": "^0.17.1",
+    "qs": "^6.14.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1"
   },
@@ -42,8 +43,6 @@
     "@types/multer": "^2.0.0",
     "@types/node": "^20.11.30",
     "@types/pdfkit": "^0.17.2",
-    "ts-node": "^10.9.2",
-    "ts-node-dev": "^2.0.0",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.4.5"
   }
