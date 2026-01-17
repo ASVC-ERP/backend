@@ -6,16 +6,6 @@ export type DeliveryReceiptType = {
     shipping_date?: string | null;
     courier?: string | null;
   
-    sales_orders: {
-      id: number;
-      order_code?: string | null;
-      customers: {
-        name?: string | null;
-        address?: string | null;
-        tin?: string | null;
-      }[];
-    }[];
-  
     sales_invoice_items: {
       quantity: number;
       price: number;

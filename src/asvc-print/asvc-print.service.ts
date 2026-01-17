@@ -3,6 +3,7 @@ import { SupabaseService } from '../supabase/supabase.service';
 import { SalesOrderType } from './type/so.type';
 import { PackingListType } from './type/pl.type';
 import { DeliveryReceiptType } from './type/dr.type';
+import { OrdersController } from 'src/orders/orders.controller';
 
 @Injectable()
 export class PrintService {
@@ -64,18 +65,18 @@ export class PrintService {
   // ------------------------------------------------------------------------------------------------------------------------------------
   // Packing List Get Function
   // ------------------------------------------------------------------------------------------------------------------------------------  
-  async read_pl(orderId: number) {
+  async read_pl(id: number) {
     const { data, error } = await this.service.client
-      .from('sales_orders')
+      .from('sales_invoices')
       .select(`
-        order_date,
-        status,
+        id,
+        invoice_date,
         customers (
           name,
           address,
           tin
         ),
-        sales_order_items (
+        sales_invoice_items (
           quantity,
           products (
             item_name,
@@ -83,7 +84,7 @@ export class PrintService {
           )
         )
       `)
-      .eq('id', orderId)
+      .eq('id', id)
       .single();
 
     if (error || !data) {
@@ -91,13 +92,14 @@ export class PrintService {
     }
 
     const pl = data as PackingListType;
+    const udata = data as any;
 
     return {
-      date: pl.order_date,
-      customerName: pl.customers?.name ?? '',
-      customerAddress: pl.customers?.address ?? '',
-      customerTIN: pl.customers?.tin ?? '',
-      items: pl.sales_order_items.map(item => ({
+      date: pl.invoice_date,
+      customerName: udata.customers?.name ?? '',
+      customerAddress: udata.customers?.address ?? '',
+      customerTIN: udata.customers?.tin ?? '',
+      items: pl.sales_invoice_items.map(item => ({
         itemName: item.products?.item_name ?? '',
         quantity: item.quantity,
         unit: item.products?.unit ?? '',
@@ -118,12 +120,12 @@ export class PrintService {
         courier,
         sales_orders (
           id,
-          order_code,
-          customers (
-            name,
-            address,
-            tin
-          )
+          order_code
+        ),
+        customers (
+          name,
+          address,
+          tin
         ),
         sales_invoice_items (
           quantity,
@@ -141,14 +143,17 @@ export class PrintService {
 
     const row = data as DeliveryReceiptType;
 
-    const order = row.sales_orders?.[0];
-    const customer = order?.customers?.[0];
+    const urow = data as any;
+    const order = urow.sales_orders;
+    const customer = urow.customers;
 
     return {
       drNo: row.invoice_number ?? '',
       date: row.shipping_date ?? row.invoice_date,
       waybill: row.waybill_number ?? '',
       courier: row.courier ?? '',
+      sales_order_id: order.id,
+      sales_order_code: order.order_code,
       customerName: customer?.name ?? '',
       customerAddress: customer?.address ?? '',
       customerTIN: customer?.tin ?? '',
