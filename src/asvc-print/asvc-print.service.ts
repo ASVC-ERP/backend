@@ -3,7 +3,6 @@ import { SupabaseService } from '../supabase/supabase.service';
 import { SalesOrderType } from './type/so.type';
 import { PackingListType } from './type/pl.type';
 import { DeliveryReceiptType } from './type/dr.type';
-import { OrdersController } from 'src/orders/orders.controller';
 
 @Injectable()
 export class PrintService {

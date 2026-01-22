@@ -1,9 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 @Injectable()
 export class SupabaseService {
   private supabase: SupabaseClient;
+  private readonly logger = new Logger(SupabaseService.name);
 
   constructor() {
     const url = process.env.SUPABASE_URL;
@@ -14,32 +15,10 @@ export class SupabaseService {
     }
 
     this.supabase = createClient(url, key);
+    this.logger.log('Supabase client initialized');
   }
 
   get client(): SupabaseClient {
     return this.supabase;
-  }
-
-  async connection_test() {
-    try {
-        const { data, error } = await this.supabase
-        .from('profiles')
-        .select('*')
-        .limit(1);
-
-        if (error) throw error;
-
-        return {
-        success: true,
-        message: 'Supabase connection works!',
-        data,
-        };
-    } catch (err) {
-        return {
-        success: false,
-        message: 'Supabase connection failed',
-        error: err instanceof Error ? err.message : err,
-        };
-    }
   }
 }
