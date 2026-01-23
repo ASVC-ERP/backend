@@ -23,7 +23,6 @@ export class ProductService {
   }
 
   // READ
-
   // cannot do a find all function due to limit of 1000 rows only, must be seperated by pages
   async find_by_page(
     page = 1, 
@@ -39,7 +38,7 @@ export class ProductService {
     let query = this.supabase.client
       .from('products')
       .select('*', { count: 'exact' })
-      .order('id', { ascending: true });
+      .order('id', { ascending: false });
 
     if (search) {
       query = query.or(`item_name.ilike.%${search}%,item_code.ilike.%${search}%`);

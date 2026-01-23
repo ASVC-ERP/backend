@@ -15,9 +15,6 @@ class UpdateSupplierInvoiceItemDto {
     @IsNumber()
     quantity: number;
   
-    @IsString()
-    unit?: string;
-  
     @IsNumber()
     unit_cost: number;
   }
@@ -42,8 +39,7 @@ class UpdateSupplierInvoiceItemDto {
     @IsOptional()
     @IsNumber()
     conversion_factor?: number;
-  
-    // REQUIRED – same as sales order
+
     @IsArray()
     @IsNotEmpty()
     @ValidateNested({ each: true })

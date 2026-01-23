@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  InternalServerErrorException
 } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { UpdateSupplierInvoiceDto } from './dto/update-invoice.dto';
@@ -11,156 +12,69 @@ import { CreateSupplierInvoiceDto } from './dto/create-invoice.dto';
 export class SupplierInvoiceService {
   constructor(private readonly supabase: SupabaseService) {}
 
+  private readonly table = 'supplier_invoices'
+
+  /* ================= CREATE ================= */
   async create(dto: CreateSupplierInvoiceDto) {
     const { items, ...invoiceData } = dto;
+    const { data, error } = await this.supabase.client.rpc(
+      'supplier_invoice_create',
+      {
+        invoice_data: invoiceData,
+        items,
+      },
+    );
 
-    const { data: invoice, error: invoiceError } = await this.supabase.client
-      .from('supplier_invoices')
-      .insert({
-        ...invoiceData,
-        status: 'Pending',
-      })
-      .select()
-      .single();
-
-    if (invoiceError) throw invoiceError;
-
-    const invoiceItems = items.map((item) => ({
-      invoice_id: invoice.id,
-      product_id: item.product_id,
-      quantity: item.quantity,
-      unit_cost: item.unit_cost,
-      subtotal: item.quantity * item.unit_cost,
-    }));
-
-    const { error: itemsError } = await this.supabase.client
-      .from('supplier_invoice_items')
-      .insert(invoiceItems);
-
-    if (itemsError) throw itemsError;
-
-    return invoice;
+    if (error) throw new BadRequestException("Failed to create invoice");
+    return data;
   }
 
   async post_invoice(id: number) {
-    // 1. Fetch invoice
-    const { data: invoice, error: invoiceError } = await this.supabase.client
-      .from('supplier_invoices')
-      .select('id, status')
-      .eq('id', id)
-      .single();
+    const { error } = await this.supabase.client.rpc(
+      'supplier_invoice_post',
+      {
+        p_invoice_id: id,
+      },
+    );
 
-    if (invoiceError || !invoice) {
-      throw new NotFoundException('Invoice not found');
-    }
-
-    if (invoice.status !== 'Pending') {
-      throw new BadRequestException('Invoice already posted');
-    }
-
-    // 2. Fetch invoice items (include unit_cost)
-    const { data: items, error: itemsError } = await this.supabase.client
-      .from('supplier_invoice_items')
-      .select('product_id, quantity, unit_cost')
-      .eq('invoice_id', id);
-
-    if (itemsError || !items.length) {
-      throw new BadRequestException('No invoice items found');
-    }
-
-    // 3. Process each item
-    for (const item of items) {
-      const cost = Number(item.unit_cost);
-
-      // Calculate prices
-      const price1 = +(cost * 1.5).toFixed(2);
-      const price2 = +(cost * 1.4).toFixed(2);
-      const price3 = +(cost * 1.3).toFixed(2);
-
-      // 3a. Increment stock
-      const { error: stockError } = await this.supabase.client.rpc(
-        'increment_product_stock',
-        {
-          p_product_id: item.product_id,
-          p_qty: item.quantity,
-        },
-      );
-
-      if (stockError) throw stockError;
-
-      // 3b. Update product cost & prices
-      const { error: productUpdateError } = await this.supabase.client
-        .from('products')
-        .update({
-          cost,
-          price1,
-          price2,
-          price3,
-        })
-        .eq('id', item.product_id);
-
-      if (productUpdateError) throw productUpdateError;
-    }
-
-    // 4. Mark invoice as POSTED
-    const { error: updateError } = await this.supabase.client
-      .from('supplier_invoices')
-      .update({ status: 'Posted' })
-      .eq('id', id);
-
-    if (updateError) throw updateError;
-
+    if (error) throw new BadRequestException(error.message);
     return { posted: true };
   }
 
-  async findAll() {
-    const { data, error } = await this.supabase.client
-      .from('supplier_invoices')
-      .select(
-        `
-            *,
-            supplier_invoice_items (
-                id,
-                product_id,
-                quantity,
-                unit_cost,
-                subtotal
-            )
-            `,
-      )
-      .order('created_at', { ascending: false });
+  /* ================= READ ================= */
+  async find_by_page(
+    page = 1, 
+    limit = 30,
+  ) {
+    limit = Math.min(limit, 100);
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
 
-    if (error) throw error;
-    return data;
-  }
+    console.log({ page, limit, from, to });
 
-  async find_by_sid(supplier_id: number) {
-    const { data, error } = await this.supabase.client
-      .from('supplier_invoices')
-      .select(
-        `
-          *,
-          supplier_invoice_items (
-              id,
-              product_id,
-              quantity,
-              unit_cost,
-              subtotal
-          )
-          `,
-      )
-      .eq('supplier_id', supplier_id);
+    let query = this.supabase.client
+      .from(this.table)
+      .select('*', { count: 'exact' })
+      .order('id', { ascending: false });
 
-    if (error || !data) {
-      throw new NotFoundException('Supplier ID not found');
-    }
+    const { data, error, count } = await query.range(from, to);
 
-    return data;
+    if (error) throw new InternalServerErrorException(error.message);
+
+    return {
+      data,
+      meta: {
+        page,
+        limit,
+        total: count ?? 0,
+        totalPages: Math.ceil((count ?? 0) / limit),
+      },
+    };
   }
 
   async find_by_id(id: number) {
     const { data, error } = await this.supabase.client
-      .from('supplier_invoices')
+      .from(this.table)
       .select(
         `
             *,
@@ -188,6 +102,11 @@ export class SupplierInvoiceService {
       .from('supplier_invoice_items')
       .select(
         `
+        products (
+          id,
+          item_code,
+          item_name
+        ),
         supplier_invoices (
           id,
           invoice_number,
@@ -206,7 +125,7 @@ export class SupplierInvoiceService {
       )
       .eq('product_id', productId)
       .order('purchase_date', {
-        foreignTable: 'supplier_invoices',
+        foreignTable: this.table,
         ascending: false,
       });
 
@@ -216,72 +135,36 @@ export class SupplierInvoiceService {
 
   /* ================= UPDATE ================= */
   async update(id: number, dto: UpdateSupplierInvoiceDto) {
-    // Ensure invoice exists
-    const { data: invoice, error: findError } = await this.supabase.client
-      .from('supplier_invoices')
-      .select('id, status')
-      .eq('id', id)
-      .single();
-
-    if (findError || !invoice) {
-      throw new NotFoundException('Supplier invoice not found');
+    const { error } = await this.supabase.client.rpc(
+      'supplier_invoice_update',
+      {
+        p_invoice_id: id,
+        p_po_number: dto.po_number,
+        p_purchase_date: dto.purchase_date,
+        p_supplier_id: dto.supplier_id,
+        p_conversion_factor: dto.conversion_factor,
+        p_items: dto.items,
+      },
+    );
+  
+    if (error) {
+      if (error.message.includes('not found')) throw new NotFoundException(error.message);
+      if (error.message.includes('Posted')) throw new BadRequestException(error.message);
+      throw new InternalServerErrorException('Failed to update supplier invoice',);
     }
-
-    // Optional: prevent editing posted invoices
-    if (invoice.status === 'Posted') {
-      throw new BadRequestException('Cannot edit Posted invoice');
-    }
-
-    // Update invoice header
-    const { error: updateError } = await this.supabase.client
-      .from('supplier_invoices')
-      .update({
-        po_number: dto.po_number,
-        purchase_date: dto.purchase_date,
-        supplier_id: dto.supplier_id,
-        conversion_factor: dto.conversion_factor,
-      })
-      .eq('id', id);
-
-    if (updateError) throw updateError;
-
-    // 4Delete existing items
-    const { error: deleteError } = await this.supabase.client
-      .from('supplier_invoice_items')
-      .delete()
-      .eq('invoice_id', id);
-
-    if (deleteError) throw deleteError;
-
-    // 5️⃣ Insert new items
-    const itemsPayload = dto.items.map((item) => ({
-      invoice_id: id,
-      product_id: item.product_id,
-      quantity: item.quantity,
-      unit: item.unit,
-      unit_cost: item.unit_cost,
-      subtotal: item.quantity * item.unit_cost,
-    }));
-
-    const { error: insertError } = await this.supabase.client
-      .from('supplier_invoice_items')
-      .insert(itemsPayload);
-
-    if (insertError) throw insertError;
-
+  
     return { updated: true };
   }
 
   /* ================= DELETE ================= */
   async remove(id: number) {
-    // delete items first (FK constraint)
     await this.supabase.client
       .from('supplier_invoice_items')
       .delete()
       .eq('invoice_id', id);
 
     const { error } = await this.supabase.client
-      .from('supplier_invoices')
+      .from(this.table)
       .delete()
       .eq('id', id);
 

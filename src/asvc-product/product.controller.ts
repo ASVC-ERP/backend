@@ -27,7 +27,7 @@ export class ProductController {
     return this.service.create(dto);
   }
 
-  @Get('page')
+  @Get()
   async find_by_page(
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(30), ParseIntPipe) limit: number,
@@ -54,7 +54,7 @@ export class ProductController {
     return this.service.listAdjustments(id);
   }
 
-  @Get(':id')
+  @Get('id/:id')
   find(@Param('id') id: string) {
     return this.service.find(+id);
   }

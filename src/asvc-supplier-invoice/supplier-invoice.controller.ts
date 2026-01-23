@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Param, Body, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Post, Put, Patch, Delete, Param, Body, Query, DefaultValuePipe, ParseIntPipe } from '@nestjs/common';
 import { SupplierInvoiceService } from './supplier-invoice.service';
 import { CreateSupplierInvoiceDto } from './dto/create-invoice.dto';
 import { UpdateSupplierInvoiceDto } from './dto/update-invoice.dto';
@@ -17,17 +17,22 @@ export class SupplierInvoiceController {
     return this.service.post_invoice(id);
   }
 
-
+/*
   @Get()
   findAll() {
     return this.service.findAll();
   }
+*/
 
-  @Get('sid/:supplier_id')
-  find_by_sid(
-    @Param('supplier_id') supplier_id: number
+  @Get()
+  async find_by_page(
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(30), ParseIntPipe) limit: number,
   ) {
-    return this.service.find_by_sid(supplier_id);
+    return this.service.find_by_page(
+      page,
+      limit,
+    );
   }
 
   @Get('id/:id')
@@ -42,7 +47,7 @@ export class SupplierInvoiceController {
     return this.service.get_costs(productId);
   }
 
-  @Patch(':id')
+  @Put(':id')
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateSupplierInvoiceDto,
