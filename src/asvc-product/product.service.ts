@@ -4,6 +4,7 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { AdjustStockDto } from './dto/adjust-stock.dto';
 import { AdjustPriceDto } from './dto/adjust-price.dto';
+import { AdjustCostDto } from './dto/adjust-cost.dto';
 
 @Injectable()
 export class ProductService {
@@ -21,27 +22,15 @@ export class ProductService {
     return data;
   }
 
-  // READ ALL
-  async find_all() {
-    const { data, error } = await this.supabase.client
-      .from('products')
-      .select('*', { count: 'exact' })
-      .order('id', { ascending: true }) 
+  // READ
 
-    if (error) {
-      throw new InternalServerErrorException(error.message);
-    }
-
-    return data;
-  }
-
+  // cannot do a find all function due to limit of 1000 rows only, must be seperated by pages
   async find_by_page(
     page = 1, 
-    limit = 50,
+    limit = 30,
     search?: string,
   ) {
     limit = Math.min(limit, 100);
-
     const from = (page - 1) * limit;
     const to = from + limit - 1;
 
@@ -53,16 +42,12 @@ export class ProductService {
       .order('id', { ascending: true });
 
     if (search) {
-      query = query.or(
-        `item_name.ilike.%${search}%,item_code.ilike.%${search}%`
-      );
+      query = query.or(`item_name.ilike.%${search}%,item_code.ilike.%${search}%`);
     }
 
     const { data, error, count } = await query.range(from, to);
 
-    if (error) {
-      throw new InternalServerErrorException(error.message);
-    }
+    if (error) throw new InternalServerErrorException(error.message);
 
     return {
       data,
@@ -75,7 +60,6 @@ export class ProductService {
     };
   }
 
-  // READ ONE
   async find(id: number) {
     const { data, error } = await this.supabase.client
       .from('products')
@@ -83,52 +67,41 @@ export class ProductService {
       .eq('id', id)
       .single();
 
-    if (error || !data) {
-      throw new NotFoundException('Product not found');
-    }
-
+    if (error || !data) throw new NotFoundException('Product not found');
     return data;
   }
 
-  async get_details(item_name: string) {
-    const { data, error } = await this.supabase.client
-      .from('products')
-      .select('*')
-      .ilike('item_name', `%${item_name}%`)
-
-    if (error) {
-      throw new BadRequestException(error.message);
+  async search(query: string, limit = 20) {
+    const q = query?.trim();
+  
+    if (!q) {
+      return [];
     }
-
-    return data;
-  }
-
-  async search(search: string) {
+  
     const { data, error } = await this.supabase.client
       .from('products')
-      .select('*')
-      .or(
-        `item_name.ilike.%${search}%,item_code.ilike.%${search}%`
-      )
+      .select(`
+          id,
+          item_code,
+          item_name,
+          unit,
+          stock
+      `)
+      .or(`item_name.ilike.*${q}*,item_code.ilike.*${q}*`)
       .order('item_name', { ascending: true })
-      .limit(20);
-
-    if (error) {
-      throw new BadRequestException(error.message);
-    }
-
+      .limit(limit);
+    
+    if (error) throw new NotFoundException('Product not found');
     return data;
   }
 
-  async list_adjust(id: number) {
+  async listAdjustments(id: number) {
     const { data, error } = await this.supabase.client
       .from('inventory_adjustments')
       .select('*')
       .eq('product_id', id)
 
-    if (error || !data) {
-      throw new NotFoundException('Product not found');
-    }
+    if (error || !data) throw new NotFoundException('Product not found');
     return data;
   }
 
@@ -141,27 +114,13 @@ export class ProductService {
       .select()
       .single();
 
-    if (error || !data) {
-      throw new NotFoundException('Product not found');
-    }
-
+    if (error || !data) throw new NotFoundException('Cannot update product');
     return data;
   }
 
   async adjust_stock(id: number, dto: AdjustStockDto) {
-    const { data: product } = await this.supabase.client
-      .from('products')
-      .select('stock')
-      .eq('id', id)
-      .single();
-  
-    if (!product) throw new NotFoundException('Product not found');
-  
     const newStock = dto.quantity;
-  
-    if (newStock < 0) {
-      throw new BadRequestException('Stock cannot be negative');
-    }
+    if (newStock < 0) throw new BadRequestException('Stock cannot be negative');
   
     const { data, error } = await this.supabase.client
       .from('products')
@@ -171,7 +130,6 @@ export class ProductService {
       .single();
   
     if (error) throw error;
-  
     return data;
   }
 
@@ -183,10 +141,19 @@ export class ProductService {
       .select()
       .single();
   
-    if (error || !data) {
-      throw new NotFoundException('Product not found');
-    }
+    if (error || !data) throw new NotFoundException('Cannot adjust price');
+    return data;
+  }
+
+  async adjust_cost(id: number, dto: AdjustCostDto) {
+    const { data, error } = await this.supabase.client
+      .from('products')
+      .update({ cost: dto.cost })
+      .eq('id', id)
+      .select()
+      .single();
   
+    if (error || !data) throw new NotFoundException('Cannot adjust cost');
     return data;
   }
 
@@ -197,8 +164,7 @@ export class ProductService {
       .delete()
       .eq('id', id);
 
-    if (error) throw error;
-
+    if (error) throw new BadRequestException('Cannot Delete Product.');;
     return { message: 'Product deleted successfully' };
   }
 }

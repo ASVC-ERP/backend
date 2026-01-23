@@ -1,9 +1,22 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
+import { 
+  Controller,
+  DefaultValuePipe, 
+  ParseIntPipe,  
+  Body,  
+  Get, 
+  Post,
+  Put,
+  Patch,
+  Param, 
+  Delete, 
+  Query 
+} from '@nestjs/common';
 import { ProductService } from './product.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { AdjustStockDto } from './dto/adjust-stock.dto';
 import { AdjustPriceDto } from './dto/adjust-price.dto';
+import { AdjustCostDto } from './dto/adjust-cost.dto';
 
 @Controller('product')
 export class ProductController {
@@ -14,37 +27,31 @@ export class ProductController {
     return this.service.create(dto);
   }
 
-  @Get()
-  async find_all() {
-    return this.service.find_all();
-  }
-
-  @Get('details')
-  get_details(@Query('item_name') item_name: string) {
-    return this.service.get_details(item_name);
-  }
-
-  @Get('search')
-  search(@Query('q') q: string) {
-    return this.service.search(q);
-  }
-
-  @Get('page/')
+  @Get('page')
   async find_by_page(
-    @Query('page') page = '1',
-    @Query('limit') limit = '50',
-    @Query('search') search?: string
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(30), ParseIntPipe) limit: number,
+    @Query('search') search?: string,
   ) {
     return this.service.find_by_page(
-      Number(page),
-      Number(limit),
+      page,
+      limit,
       search?.trim() || undefined,
     );
   }
 
-  @Get('stock/adjust/list/:id')
-  async list_adjust(@Param('id') id: number) {
-    return this.service.list_adjust(id);
+  @Get('search')
+  async search(
+    @Query('q') q: string,
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
+  ) {
+    console.log("Search Query: ", q);
+    return this.service.search(q, limit);
+  }
+
+  @Get(':id/stock-adjustments')
+  async listAdjustments(@Param('id') id: number) {
+    return this.service.listAdjustments(id);
   }
 
   @Get(':id')
@@ -52,7 +59,7 @@ export class ProductController {
     return this.service.find(+id);
   }
 
-  @Patch(':id')
+  @Put(':id')
   update(
     @Param('id') id: string,
     @Body() dto: UpdateProductDto,
@@ -74,6 +81,14 @@ export class ProductController {
     @Body() dto: AdjustPriceDto,
   ) {
     return this.service.adjust_price(+id, dto);
+  }
+
+  @Patch(':id/cost')
+  adjust_cost(
+    @Param('id') id: string,
+    @Body() dto: AdjustCostDto,
+  ) {
+    return this.service.adjust_cost(+id, dto);
   }
 
   @Delete(':id')

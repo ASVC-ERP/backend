@@ -8,10 +8,12 @@ import * as bcrypt from 'bcrypt';
 export class UsersService {
   constructor(private readonly service: SupabaseService) {}
 
+  private table = 'users';
+
   async create(dto: CreateUserDto) {
     const hashedPassword = await bcrypt.hash(dto.password, 10);
     const { data, error } = await this.service.client
-      .from('users')
+      .from(this.table)
       .insert([{ ...dto, password: hashedPassword }])
       .select();
 
@@ -21,7 +23,7 @@ export class UsersService {
 
   async read() {
     const { data, error } = await this.service.client
-      .from('users')
+      .from(this.table)
       .select('*');
 
     if (error) throw new Error(error.message);
@@ -30,7 +32,7 @@ export class UsersService {
 
   async read_one(id: number) {
     const { data, error } = await this.service.client
-      .from('users')
+      .from(this.table)
       .select('*')
       .eq('id', id)
       .single();
@@ -44,7 +46,7 @@ export class UsersService {
       dto.password = await bcrypt.hash(dto.password, 10);
     }
     const { data, error } = await this.service.client
-      .from('users')
+      .from(this.table)
       .update(dto)
       .eq('id', id)
       .select();
@@ -55,7 +57,7 @@ export class UsersService {
 
   async delete(id: number) {
     const { error } = await this.service.client
-      .from('users')
+      .from(this.table)
       .delete()
       .eq('id', id);
 
