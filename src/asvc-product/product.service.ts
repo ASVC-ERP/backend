@@ -26,7 +26,7 @@ export class ProductService {
   // cannot do a find all function due to limit of 1000 rows only, must be seperated by pages
   async find_by_page(
     page = 1, 
-    limit = 30,
+    limit = 100,
     search?: string,
   ) {
     limit = Math.min(limit, 100);
@@ -118,18 +118,52 @@ export class ProductService {
   }
 
   async adjust_stock(id: number, dto: AdjustStockDto) {
-    const newStock = dto.quantity;
-    if (newStock < 0) throw new BadRequestException('Stock cannot be negative');
+    const { quantity: newStock, pic, remarks } = dto;
+    
+    if (newStock < 0) 
+      throw new BadRequestException('Stock cannot be negative');
   
-    const { data, error } = await this.supabase.client
+    const { data: product, error: fetchError } =
+    await this.supabase.client
       .from('products')
-      .update({ stock: newStock })
+      .select('id, stock')
+      .eq('id', id)
+      .single();
+
+    if (fetchError || !product)
+      throw new NotFoundException('Product not found');
+
+    const fromQuantity = product.stock;
+    const toQuantity = newStock;
+    const adjustedQuantity = toQuantity - fromQuantity;
+
+    if (adjustedQuantity === 0)
+      return product;
+
+    const { data: updatedProduct, error: updateError } =
+    await this.supabase.client
+      .from('products')
+      .update({ stock: toQuantity })
       .eq('id', id)
       .select()
       .single();
-  
-    if (error) throw error;
-    return data;
+
+    if (updateError) throw updateError;
+
+    const { error: logError } = await this.supabase.client
+    .from('inventory_adjustments')
+    .insert({
+      adjustment_date: new Date().toISOString().slice(0, 10), // YYYY-MM-DD
+      product_id: id,
+      from_quantity: fromQuantity,
+      to_quantity: toQuantity,
+      adjusted_quantity: adjustedQuantity,
+      pic,
+      remarks,
+    });
+
+    if (logError) throw logError;
+    return updatedProduct;
   }
 
   async adjust_price(id: number, dto: AdjustPriceDto) {

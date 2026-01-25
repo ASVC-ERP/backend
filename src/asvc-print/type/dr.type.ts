@@ -1,5 +1,6 @@
 export type DeliveryReceiptType = {
     id: number;
+    order_id: number;
     invoice_number?: string | null;
     invoice_date?: string | null;
     waybill_number?: string | null;

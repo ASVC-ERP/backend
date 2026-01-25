@@ -94,13 +94,12 @@ import {
   
       // ===== CUSTOMER INFO =====
       doc.font('Helvetica').fontSize(12);
-      doc.text(`Order No: ${data.orderId}`, 400, 80);
+      doc.text(`Order No: ORD${String(data.id).padStart(4, '0')}`, 400, 80);
       doc.text(`Date: ${data.date}`, 400, 95);
       doc.text(`Customer: ${data.customerName}`, 50, 80);
       doc.text(`Address: ${data.customerAddress}`, 50, 95, {
         width: 300,
       });
-      doc.text(`TIN: ${data.customerTIN}`, 400, 110);
   
       // ===== TABLE =====
       const tableTop = 150;
@@ -138,25 +137,27 @@ import {
       );
   
       doc.pipe(res);
+
+      const y_offset = 50;
   
       // ===== TITLE =====
       doc.font('Helvetica-Bold');
-      doc.fontSize(12).text('Packing List', 50, 90, {
+      doc.fontSize(12).text('Packing List', 50, 90 - y_offset, {
         underline: true,
         align: 'center',
       });
   
       // ===== CUSTOMER INFO =====
       doc.font('Helvetica');
-      doc.text(`Date: ${data.date}`, 400, 120);
-      doc.text(`Customer: ${data.customerName}`, 50, 120);
-      doc.text(`Address: ${data.customerAddress}`, 50, 135, {
+      doc.text(`Date: ${data.date}`, 440, 120 - y_offset);
+      doc.text(`Customer: ${data.customerName}`, 50, 120 - y_offset);
+      doc.text(`Address: ${data.customerAddress}`, 50, 135 - y_offset, {
         width: 300,
       });
-      doc.text(`TIN: ${data.customerTIN}`, 400, 135);
+      doc.text(`TIN: ${data.customerTIN}`, 440, 135 - y_offset );
   
       // ===== TABLE =====
-      const tableTop = 200;
+      const tableTop = 170 - y_offset;
       const colX = {
         qty: 50,
         unit: 100,
@@ -183,19 +184,32 @@ import {
       data.items
         .filter(i => i.quantity > 0)
         .forEach(item => {
-          doc.rect(colX.qty, y, colWidth.qty, rowHeight).stroke();
-          doc.rect(colX.unit, y, colWidth.unit, rowHeight).stroke();
-          doc.rect(colX.item, y, colWidth.item, rowHeight).stroke();
-          doc.rect(colX.carton, y, colWidth.carton, rowHeight).stroke();
+          const text_padding = 5;
+
+          // Measure item name height
+          const item_height = doc.heightOfString(
+            item.itemName,
+            { width: colWidth.item - text_padding * 2, }
+          );
+
+          // Minimum row height
+          const dynamic_height = Math.max(
+            rowHeight, item_height + text_padding * 2
+          );
+
+          doc.rect(colX.qty, y, colWidth.qty, dynamic_height).stroke();
+          doc.rect(colX.unit, y, colWidth.unit, dynamic_height).stroke();
+          doc.rect(colX.item, y, colWidth.item, dynamic_height).stroke();
+          doc.rect(colX.carton, y, colWidth.carton, dynamic_height).stroke();
   
-          doc.text(item.quantity.toString(), colX.qty + 5, y + 5);
+          doc.text(item.quantity.toString(), colX.qty + text_padding, y + text_padding);
           doc.text(item.unit, colX.unit + 5, y + 5);
-          doc.text(item.itemName, colX.item + 5, y + 5, {
-            width: colWidth.item - 10,
+          doc.text(item.itemName, colX.item + text_padding, y + text_padding, {
+            width: colWidth.item - text_padding*2,
           });
-          doc.text(item.carton ?? '', colX.carton + 5, y + 5);
+          doc.text(item.carton ?? '', colX.carton + text_padding, y + text_padding);
   
-          y += rowHeight;
+          y += dynamic_height;
         });
   
       doc.end();
@@ -315,7 +329,7 @@ import {
       );
       
       doc.text('By: ___________________________', colX.price, y + 20);
-      doc.text('        Signature Over Printed Name', colX.price, y + 30);
+      doc.text('Signature', colX.price+50, y + 30);
       doc.text('Date: ________________________', colX.price, y + 50);
       
       doc.text('Sales Invoice to Follow', 0, doc.page.height - 50, {

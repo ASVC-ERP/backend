@@ -30,7 +30,7 @@ export class ProductController {
   @Get()
   async find_by_page(
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-    @Query('limit', new DefaultValuePipe(30), ParseIntPipe) limit: number,
+    @Query('limit', new DefaultValuePipe(100), ParseIntPipe) limit: number,
     @Query('search') search?: string,
   ) {
     return this.service.find_by_page(

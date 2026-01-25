@@ -2,434 +2,363 @@ import {
   Injectable,
   BadRequestException,
   NotFoundException,
+  InternalServerErrorException,
+  ConflictException
 } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { CreateSalesOrderDto } from './dto/create-order.dto';
 import { UpdateSalesOrderDto } from './dto/update-order.dto';
-import { ServeItemRow } from './type/find_serve.type';
+
+const ORDER_COLUMNS = [
+  'id',
+  'order_date',
+  'status',
+  'total_price',
+  'created_at',
+] as const;
+
+const CUSTOMER_COLUMNS = ['name'] as const;
 
 @Injectable()
 export class OrderService {
   constructor(private readonly supabase: SupabaseService) {}
 
-  // ------------------------------------------------------------------------------------------------------------------------------------
-  // CRUD Functions
-  // API: localhost:3000/api/order
-  // ------------------------------------------------------------------------------------------------------------------------------------
+  private readonly table = 'sales_orders';
+
+  // ====================================================================================================================================
+  // CREATE API CALL
+  // ====================================================================================================================================
+  // API: localhost:3000/api/order/
+  // SAMPLE PAYLOAD:
+  /* 
+        {
+          "cid": 3,
+          "order_date": "2026-01-23",
+          "discount": 0,
+          "items": [
+              {
+                  "price": 320,
+                  "item_id": 2,
+                  "quantity": 10
+              },
+              {
+                  "price": 320,
+                  "item_id": 3,
+                  "quantity": 20
+              }
+          ]
+        }
+  */
+  // ====================================================================================================================================
 
   async create(dto: CreateSalesOrderDto) {
-    // 1. validate item codes
-    const item = dto.items.map((i) => i.item_code);
-
-    const { data: existingItems, error: itemError } = await this.supabase.client
-      .from('products')
-      .select('item_code')
-      .in('item_code', item);
-
-    if (itemError) throw itemError;
-
-    // 1.1 find missing items
-    const existingCodes = new Set(existingItems.map((i) => i.item_code));
-
-    const missing = item.filter((code) => !existingCodes.has(code));
-
-    if (missing.length > 0) {
-      throw new BadRequestException(`Item(s) not found: ${missing.join(', ')}`);
-    }
-
-    // 2. compute subtotal
-    const subtotal = dto.items.reduce(
-      (sum, item) => sum + item.quantity * item.price,
-      0,
-    );
-
-    const discount = dto.discount ?? 0;
-    const total_price = Number((subtotal - discount).toFixed(2));;
+    const { data, error } = await this.supabase.client.rpc('create_sales_order',{
+        p_cid: dto.cid,
+        p_sales_agent: dto.sales_agent,
+        p_discount: dto.discount ?? 0,
+        p_items: dto.items
+      });
     
-    // 3. approval logic
-    const { data: user, error: userError } = await this.supabase.client
-      .from('users')
-      .select('role')
-      .eq('username', dto.sales_agent)
-      .maybeSingle();
+    if (error) throw new BadRequestException(error.message);;
+    return { created: true };
+  }
 
-    if (userError) throw userError;
+  // ====================================================================================================================================
+  // READ BY PAGE API CALL
+  // ====================================================================================================================================
+  // DESCRIPTION: This API call reads a maximum of 30 orders per page. This is done due to the limited rows (1000) for read requests
+  // API: localhost:3000/api/order?=
+  // PARAMETERS:
+  //    customer (customer name only)
+  //    status (Open, Served, Partial Served)
+  //    sortBy (id, order_date, status, total_price, created_at)
+  //    sortDir (asc or desc)
+  // SAMPLE PAYLOAD: NA
+  // ====================================================================================================================================
 
-    const approval_status =
-      user?.role === 'admin' ? 'Not Required' : 'Required';
+  async get_by_page( 
+    page = 1, 
+    limit = 30, 
+    status?: string, 
+    customer?: string, 
+    sortBy = 'id', 
+    sortDir: 'asc' | 'desc' = 'desc'
+  ) {
+    limit = Math.min(limit, 100);
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
+    const safeSortDir = sortDir === 'asc' ? 'asc' : 'desc';
 
-    // 4. create sales order
-    const { data: order, error } = await this.supabase.client
-      .from('sales_orders')
-      .insert({
-        cid: dto.cid,
-        sales_agent: dto.sales_agent,
-        order_date: new Date(),
-        discount,
-        total_price,
-        status: 'Open',
-        approval_status: approval_status,
-      })
-      .select('id, order_code')
-      .single();
+    let query = this.supabase.client
+      .from(this.table)
+      .select(`
+          *,
+          customer:customers!sales_orders_cid_fkey!inner (
+            id,
+            name
+          )`,
+        { count: 'exact' }
+      )
 
-    if (error) throw error;
+    if (status) 
+      query = query.eq('status', status);
+    if (customer?.trim()) 
+      query = query.ilike('customer.name', `%${customer.trim()}%`);
 
-    // 3. insert order items
-    const items = dto.items.map(item => ({
-      sales_order_id: order.id,
-      item_code: item.item_code,
-      quantity: item.quantity,
-      price: item.price,
-    }));
+    if (sortBy.startsWith('customer.')) {
+      const column = sortBy.replace('customer.', '');
+      if (CUSTOMER_COLUMNS.includes(column as any)) {
+        query = query.order(column, {
+          ascending: safeSortDir === 'asc',
+          foreignTable: 'customer',
+        });
+      }
+    }
+    else if (ORDER_COLUMNS.includes(sortBy as any)) 
+      query = query.order(sortBy, { ascending: safeSortDir === 'asc' });
+    else 
+      query = query.order('id', { ascending: false });
+  
+    
+    const { data, error, count } = await query.range( from, to );
 
-    const { error: itemsError } = await this.supabase.client
-      .from('sales_order_items')
-      .insert(items);
-
-    if (itemsError) throw itemsError;
+    if (error) throw new InternalServerErrorException(error.message);
 
     return {
-      id: order.id,
-      order_code: order.order_code
+      data,
+      meta: { page, limit, total: count ?? 0, totalPages: Math.ceil((count ?? 0) / limit), },
     };
   }
 
-  async findAll() {
-    const { data, error } = await this.supabase.client
-      .from('sales_orders')
-      .select('*')
-      .order('order_code', { ascending: false });
-
-    if (error) throw error;
-    return data;
-  }
+  // ====================================================================================================================================
+  // READ BY ID
+  // ====================================================================================================================================
+  // DESCRIPTION: This API call reads a maximum of 30 orders per page. This is done due to the limited rows (1000) for read requests
+  // API: localhost:3000/api/order/
+  // SAMPLE PAYLOAD: NA
+  // ====================================================================================================================================
 
   async find(id: number) {
     const { data, error } = await this.supabase.client
       .from('sales_orders')
-      .select(
-        `
+      .select(`
         id,
-        order_code,
         order_date,
         status,
         total_price,
         discount,
-        users (
-          id,
-          username,
-          role
-        ),
         approval_status,
-        created_at,
-        customers (
-          id,
-          cid,
-          name,
-          address,
-          number,
-          tin,
-          terms,
-          pic
-        ),
-        sales_order_items (
-          serve_items (
-            quantity_to_serve,
-            status
-          ),
-          quantity,
-          price,
-          products (
-            item_code,
-            item_name,
-            brand,
-            origin,
-            unit,
-            model,
-            part_num,
-            internal_num,
-            min_stock,
-            stock,
-            price1,
-            price2,
-            price3,
-            price4
-          )
+        users ( username, name, role ),
+        customers ( name, address, number ),
+        sales_order_items ( 
+          quantity, serve_qty, price, 
+          products ( item_code, item_name, unit, stock )
         )
-      `,
+      `
       )
       .eq('id', id)
       .single();
 
-    if (error) throw error;
+    if (error) throw new InternalServerErrorException(error.message);
 
     return {
       id: data.id,
-      order_code: data.order_code,
       order_date: data.order_date,
       status: data.status,
       total_price: data.total_price,
       discount: data.discount,
       approval_status: data.approval_status,
-      created_at: data.created_at,
       sales_agent: data.users,
       customer: data.customers,
       items: data.sales_order_items,
     };
   }
+  
 
-  async find_serve_items(id: number) {
-    const { data, error } = await this.supabase.client
-      .from('serve_items')
-      .select('*')
-      .eq('order_id', id);
-
-    if (error) throw error;
-
-    return data;
-  }
-
-  async find_serve(item_code: string) {
-    const { data, error } = await this.supabase.client
-      .from('serve_items')
-      .select(
-        `
-        id,
-        sales_orders(
-          order_code,
-          order_date,
-          status,
-          customers (
-            name
-          )
-        ),
-        quantity_ordered,
-        quantity_to_serve
-      `,
-      )
-      .eq('item_code', item_code);
-
-    if (error) throw error;
-
-    const result = ((data as ServeItemRow[]) ?? []).map((item) => ({
-      serve_item_id: item.id,
-      order_status: item.sales_orders?.status ?? null,
-      order_code: item.sales_orders?.order_code ?? null,
-      order_date: item.sales_orders?.order_date ?? null,
-      customer_name: item.sales_orders?.customers?.name ?? null,
-      quantity_ordered: item.quantity_ordered,
-      quantity_to_serve: item.quantity_to_serve,
-    }));
-
-    return result;
-  }
-
-  async find_order_items(id: number) {
-    console.log(id);
-    const { data, error } = await this.supabase.client
-      .from('sales_order_items')
-      .select('*')
-      .eq('sales_order_id', id);
-
-    if (error) throw error;
-
-    return data;
-  }
-
-  async update(id: number, dto: UpdateSalesOrderDto) {
-    // 1. Ensure order exists
-    const { data: order, error: findError } = await this.supabase.client
-      .from('sales_orders')
-      .select('id')
-      .eq('id', id)
-      .single();
-
-    if (findError || !order) {
-      throw new Error('Sales order not found');
-    }
-
-    // 2. Recompute totals from items
-    const subtotal = dto.items.reduce(
-      (sum, item) => sum + item.quantity * item.price,
-      0,
+  async getServedOrdersByItem(id: number) {
+    const { data, error } = await this.supabase.client.rpc(
+      'get_served_orders_by_item',
+      { p_item_id: id },
     );
+  
+    if (error) throw error;
+    return data;
+  }
 
-    const discount = dto.discount ?? 0;
-    const total_price = subtotal - discount;
-
-    // 3. Update order header
-    const { error: updateError } = await this.supabase.client
-      .from('sales_orders')
-      .update({
-        cid: dto.cid,
-        sales_agent: dto.sales_agent,
-        order_date: dto.order_date,
-        discount,
-        total_price,
-      })
-      .eq('id', id);
-
-    if (updateError) throw updateError;
-
-    // 4. Delete existing items
-    const { error: deleteError } = await this.supabase.client
-      .from('sales_order_items')
-      .delete()
-      .eq('sales_order_id', id);
-
-    if (deleteError) throw deleteError;
-
-    // 5. Insert new items
-    const itemsPayload = dto.items.map((item) => ({
-      sales_order_id: id,
-      item_code: item.item_code,
-      quantity: item.quantity,
-      price: item.price,
-    }));
-
-    const { error: insertError } = await this.supabase.client
-      .from('sales_order_items')
-      .insert(itemsPayload);
-
-    if (insertError) throw insertError;
-
+  // ====================================================================================================================================
+  // UPDATE API CALL
+  // API: localhost:3000/api/order/id/:id
+  // SAMPLE PAYLOAD:
+  /* 
+        {
+          "cid": 3,
+          "order_date": "2026-01-23",
+          "discount": 0,
+          "items": [
+              {
+                  "price": 320,
+                  "item_id": 2,
+                  "quantity": 10
+              },
+              {
+                  "price": 320,
+                  "item_id": 3,
+                  "quantity": 20
+              }
+          ]
+        }
+  */
+  // ====================================================================================================================================
+  async update(id: number, dto: UpdateSalesOrderDto) {
+    const { error } = await this.supabase.client.rpc('update_sales_order', {
+        payload: {
+          order_id: id,
+          cid: dto.cid,
+          order_date: dto.order_date,
+          discount: dto.discount ?? 0,
+          items: dto.items,
+    }});
+  
+    if (error) throw new BadRequestException(error.message);;
     return { updated: true };
   }
+  
 
+  // ====================================================================================================================================
+  // DELETE API CALL
+  // API: localhost:3000/api/order/id/:id
+  // SAMPLE PAYLOAD: NA
+  // ====================================================================================================================================
   async delete(id: number) {
-    // 1. Check order exists
-    const { data: order, error: orderError } = await this.supabase.client
-      .from('sales_orders')
-      .select('id')
-      .eq('id', id)
-      .single();
-
-    if (orderError || !order) {
-      throw new NotFoundException('Order' + id + ' not found');
+    const { error } = await this.supabase.client.rpc('delete_sales_order', { 
+      p_order_id: id 
+    });
+  
+    if (error) {
+      if (error.message.includes('not found')) throw new NotFoundException(`Order ${id} not found`);
+      throw new BadRequestException(error.message);
     }
-
-    // 2. Delete items FIRST (FK safety)
-    const { error: itemsError } = await this.supabase.client
-      .from('sales_order_items')
-      .delete()
-      .eq('sales_order_id', id);
-
-    if (itemsError) {
-      throw new BadRequestException(itemsError.message);
-    }
-
-    // 3. Delete order
-    const { error: orderDeleteError } = await this.supabase.client
-      .from('sales_orders')
-      .delete()
-      .eq('id', id);
-
-    if (orderDeleteError) {
-      throw new BadRequestException(orderDeleteError.message);
-    }
+    return { deleted: true };
   }
 
-  // ------------------------------------------------------------------------------------------------------------------------------------
-  // Serve Functions
-  // API: localhost:3000/api/order/:id/serve
-  // Payload:
+  // ====================================================================================================================================
+  // SERVE API CALL
+  // API: localhost:3000/api/orders/:id/serve
+  // SAMPLE PAYLOAD: 
   /*
-  {
-    "items": [
-      {"item_code": "CJ-GMBG5213XR", "quantity_to_serve": 1},
-      {"item_code": "CJ-GMBG5281XR", "quantity_to_serve": 1}
-    ]
-  }
-*/
-  // ------------------------------------------------------------------------------------------------------------------------------------
-  async serve(id: number, items_to_serve: any[]) {
-    console.log(id);
-    const { data, error } = await this.supabase.client.rpc(
-      'serve_sales_order',
       {
-        p_order_id: id,
-        p_items: items_to_serve,
-      },
-    );
-
-    if (error) throw error;
-
-    return data;
-  }
-
-  // ------------------------------------------------------------------------------------------------------------------------------------
-  // Request Functions
-  // API: localhost:3000/api/order/:id/request
-  // ------------------------------------------------------------------------------------------------------------------------------------
-  async request(
+        "items": [
+          { "order_item_id": 15, "serve_qty": 10 },
+          { "order_item_id": 16, "serve_qty": 20 }
+        ]
+      }
+  */
+  // ====================================================================================================================================
+  async serve(
     id: number,
-    items: { item_code: string; quantity_to_serve: number }[],
+    items: { order_item_id: number; serve_qty: number }[],
   ) {
-    const { data, error } = await this.supabase.client.rpc(
-      'request_serve_sales_order',
-      {
+    const { error } = await this.supabase.client
+      .rpc('serve_order', {
         p_order_id: id,
         p_items: items,
-      },
-    );
-
-    if (error) throw error;
-
-    return {
-      message: 'Serve request submitted for approval',
-      data,
-    };
+      });
+  
+    if (error) throw new BadRequestException(error.message);
+    return { serve: true };
   }
 
-  // ------------------------------------------------------------------------------------------------------------------------------------
-  // Approve Functions
-  // API: localhost:3000/api/order/:id/approve
-  // ------------------------------------------------------------------------------------------------------------------------------------
+  // ====================================================================================================================================
+  // REQUEST SERVE API CALL
+  // API: localhost:3000/api/orders/:id/request
+  // SAMPLE PAYLOAD: 
+  /*
+      {
+        "items": [
+          { "order_item_id": 15, "serve_qty": 10 },
+          { "order_item_id": 16, "serve_qty": 20 }
+        ]
+      }
+  */
+  // ====================================================================================================================================
+  async request_serve(
+    id: number,
+    items: { order_item_id: number; serve_qty: number }[],
+  ) {
+    const { error } = await this.supabase.client
+      .rpc('request_serve_order', {
+        p_order_id: id,
+        p_items: items,
+      });
+  
+    if (error) throw new BadRequestException(error.message);
+    return { request: true };
+  }
+
+  // ====================================================================================================================================
+  // APPROVE API CALL
+  // API: localhost:3000/api/orders/:id/approve
+  // SAMPLE PAYLOAD: NA
+  // ====================================================================================================================================
   async approve(id: number) {
-    const { data, error } = await this.supabase.client.rpc(
-      'approve_serve_sales_order',
-      { p_order_id: id },
-    );
-
-    if (error) throw error;
-
-    return {
-      message: 'Serve request approved',
-      ...data,
-    };
+    const { error } = await this.supabase.client
+      .rpc('approve_serve_order', {
+        p_order_id: id,
+      });
+  
+    if (error) throw new BadRequestException(error.message);
+    return { approved: true };
   }
 
-  // ------------------------------------------------------------------------------------------------------------------------------------
-  // Reject Functions
-  // API: localhost:3000/api/order/:id/reject
-  // ------------------------------------------------------------------------------------------------------------------------------------
+  // ====================================================================================================================================
+  // REJECT API CALL
+  // API: localhost:3000/api/orders/:id/reject
+  // SAMPLE PAYLOAD: NA
+  // ====================================================================================================================================
   async reject(id: number) {
-    const { data, error } = await this.supabase.client.rpc(
-      'reject_serve_sales_order',
-      { p_order_id: id },
-    );
-
-    if (error) throw error;
-
-    return {
-      message: 'Serve request rejected',
-      ...data,
-    };
+    const { error } = await this.supabase.client
+      .rpc('reject_serve_order', {
+        p_order_id: id,
+      });
+  
+    if (error) throw new BadRequestException(error.message);
+    return { rejected: true };
   }
 
-  // ------------------------------------------------------------------------------------------------------------------------------------
-  // Invoice Functions
-  // API: localhost:3000/api/order/:id/invoice
-  // ------------------------------------------------------------------------------------------------------------------------------------
+  // ====================================================================================================================================
+  // UNSERVE API CALL
+  // API: localhost:3000/api/orders/:id/unserve
+  // SAMPLE PAYLOAD: NA
+  // ====================================================================================================================================
+  async unserve(id: number) {
+    const { error } = await this.supabase.client
+      .rpc('unserve_order', {
+        p_order_id: id,
+      });
+  
+    if (error) throw new BadRequestException(error.message);
+    return { unserve: true };
+  }
+
+  // ====================================================================================================================================
+  // INVOICE API CALL
+  // API: localhost:3000/api/orders/:id/unserve
+  // SAMPLE PAYLOAD: NA
+  // ====================================================================================================================================
   async invoice(id: number) {
-    const { data, error } = await this.supabase.client.rpc(
-      'create_sales_invoice',
-      { p_order_id: id },
-    );
-
-    if (error) throw error;
-
+    const { data, error } = await this.supabase.client
+      .rpc('create_sales_invoice', {
+        p_order_id: id,
+      });
+    if (error) {
+      if (error.message.includes('not found'))
+        throw new BadRequestException(error.message);
+      if (error.message.includes('already exists'))
+        throw new ConflictException(error.message);
+      if (error.message.includes('cannot be invoiced'))
+        throw new BadRequestException(error.message);
+      throw new BadRequestException(error.message);
+    }
     return data;
   }
 }

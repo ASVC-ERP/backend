@@ -2,7 +2,7 @@ import { Controller, Post, Get, Delete, Patch,  Body, Param, ParseIntPipe } from
 import { InvoicesService } from './invoices.service';
 import { UpdateSalesInvoiceDto } from './dto/update-invoice.dto';
 
-@Controller('invoices')
+@Controller('invoice')
 export class InvoicesController {
   constructor(private readonly service: InvoicesService) {}
 

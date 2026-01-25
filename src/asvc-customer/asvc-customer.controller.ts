@@ -1,25 +1,39 @@
-import { Controller, Get, Post, Body, Param, Put, Delete, ValidationPipe } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Put, Delete, Query, ValidationPipe, DefaultValuePipe, ParseIntPipe } from '@nestjs/common';
 import { CustomerService } from './asvc-customer.service';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
 
 @Controller('customer')
 export class CustomerController {
-  constructor(private readonly customerService: CustomerService) {}
+  constructor(private readonly service: CustomerService) {}
 
   @Post()
   async create(@Body(new ValidationPipe()) dto: CreateCustomerDto) {
-    return this.customerService.create(dto);
+    return this.service.create(dto);
   }
 
   @Get()
   async read() {
-    return this.customerService.read();
+    return this.service.read();
   }
+
+/*
+  @Get()
+  async get_by_page(
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(30), ParseIntPipe) limit: number,
+    @Query('filter') filter?: string,
+    @Query('sortBy') sortBy?: string,
+    @Query('sortDir') sortDir: 'asc' | 'desc' = 'desc',
+  ) {
+    return this.service.read_all( page, limit, filter, sortBy, sortDir );
+  }
+*/
+
 
   @Get(':id')
   async read_one(@Param('id') id: number) {
-    return this.customerService.read_one(Number(id));
+    return this.service.read_one(Number(id));
   }
 
   @Put(':id')
@@ -27,11 +41,11 @@ export class CustomerController {
     @Param('id') id: number,
     @Body(new ValidationPipe()) dto: UpdateCustomerDto,
   ) {
-    return this.customerService.update(Number(id), dto);
+    return this.service.update(Number(id), dto);
   }
 
   @Delete(':id')
   async delete(@Param('id') id: number) {
-    return this.customerService.delete(Number(id));
+    return this.service.delete(Number(id));
   }
 }

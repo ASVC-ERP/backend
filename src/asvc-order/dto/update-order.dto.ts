@@ -9,24 +9,23 @@ import {
 import { Type } from 'class-transformer';
 
 class UpdateSalesOrderItemDto {
-  @IsString()
-  item_code: string;
+  @IsOptional()
+  @IsNumber()
+  item_id: number;
 
+  @IsOptional()
   @IsNumber()
   quantity: number;
 
+  @IsOptional()
   @IsNumber()
   price: number;
 }
 
 export class UpdateSalesOrderDto {
   @IsOptional()
-  @IsString()
-  cid?: string;
-
-  @IsOptional()
-  @IsString()
-  sales_agent?: string;
+  @IsNumber()
+  cid?: number;
 
   @IsOptional()
   @IsString()
@@ -36,7 +35,7 @@ export class UpdateSalesOrderDto {
   @IsNumber()
   discount?: number;
 
-  // REQUIRED, fully validated
+  @IsOptional()
   @IsArray()
   @IsNotEmpty()
   @ValidateNested({ each: true })

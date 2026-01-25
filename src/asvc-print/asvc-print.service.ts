@@ -12,51 +12,32 @@ export class PrintService {
   // Sales-Order Get Function
   // ------------------------------------------------------------------------------------------------------------------------------------
   async read_so(id: number) {
-    console.log(id);
     const { data, error } = await this.service.client
       .from('sales_orders')
       .select(`
         id,
-        order_code,
         order_date,
-        status,
-        approval_status,
-        customers (
-          cid,
-          name,
-          address,
-          tin
-        ),
-        sales_order_items (
+        customers ( name, address ),
+        sales_order_items ( 
           quantity,
-          price,
-          products (
-            item_code,
-            item_name,
-            unit
-          )
+          products ( item_name, unit )
         )
       `)
       .eq('id', id)
-      .single();
+      .maybeSingle();
 
-    if (error || !data) {
-      throw new NotFoundException('Sales order not found');
-    }
-
+    if (error || !data) throw new NotFoundException('Sales order not found');
+    
     const so = data as SalesOrderType;
-
     return {
-      orderId: so.order_code ?? '',
+      id: so.id ?? '',
       date: so.order_date,
       customerName: so.customers?.name ?? '',
       customerAddress: so.customers?.address ?? '',
-      customerTIN: so.customers?.tin ?? '',
       orderedItems: so.sales_order_items.map(item => ({
         itemName: item.products?.item_name ?? '',
         quantity: item.quantity,
         unit: item.products?.unit ?? '',
-        price: item.price,
       })),
     };
   }
@@ -112,15 +93,12 @@ export class PrintService {
       .from('sales_invoices')
       .select(`
         id,
+        order_id,
         invoice_number,
         invoice_date,
         waybill_number,
         shipping_date,
         courier,
-        sales_orders (
-          id,
-          order_code
-        ),
         customers (
           name,
           address,
@@ -143,7 +121,6 @@ export class PrintService {
     const row = data as DeliveryReceiptType;
 
     const urow = data as any;
-    const order = urow.sales_orders;
     const customer = urow.customers;
 
     return {
@@ -151,8 +128,7 @@ export class PrintService {
       date: row.shipping_date ?? row.invoice_date,
       waybill: row.waybill_number ?? '',
       courier: row.courier ?? '',
-      sales_order_id: order.id,
-      sales_order_code: order.order_code,
+      order_id: row.id,
       customerName: customer?.name ?? '',
       customerAddress: customer?.address ?? '',
       customerTIN: customer?.tin ?? '',
@@ -164,5 +140,4 @@ export class PrintService {
       })),
     };
   }
-
 }

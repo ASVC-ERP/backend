@@ -27,13 +27,23 @@ export class InvoicesService {
         shipping_date,
         invoice_date,
         invoice_number,
-        created_at,
-        sales_order_id,
+        order_id,
         sales_invoice_items (
-          sales_invoice_id,
-          item_code,
           quantity,
-          price
+          price,
+          products (
+            id,
+            item_name,
+            unit
+          )
+        ),
+        customers (
+          id,
+          name,
+          address,
+          number,
+          tin,
+          terms
         )
       `)
       .eq('id', id)
@@ -43,23 +53,18 @@ export class InvoicesService {
   
     return {
       id: data.id,
-      created_at: data.created_at,
-      sales_order_id: data.sales_order_id,
-      items: data.sales_invoice_items,
-      total_price: data.total_price,
-      invoice_number: data.invoice_number,
+      customer: data.customers,
       invoice_date: data.invoice_date,
+      total_price: data.total_price,
+      items: data.sales_invoice_items,
+      invoice_number: data.invoice_number,
       waybill_number: data.waybill_number,
       courier: data.courier,
       shipping_date: data.shipping_date,
     };
   }
 
-  // sales-invoices.service.ts
-  async update(
-    id: number,
-    dto: UpdateSalesInvoiceDto,
-  ) {
+  async update( id: number, dto: UpdateSalesInvoiceDto ) {
     const { data, error } = await this.supabase.client
       .from('sales_invoices')
       .update(dto)
@@ -67,16 +72,10 @@ export class InvoicesService {
       .select()
       .single();
 
-    if (error) {
-      // handles unique invoice_number violation too
+    if (error)
       throw new BadRequestException(error.message);
-    }
-
-    if (!data) {
+    if (!data) 
       throw new NotFoundException('Sales invoice not found');
-    }
-
     return data;
   }
-
 }

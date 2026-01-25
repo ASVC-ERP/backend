@@ -18,7 +18,7 @@ export class SupplierInvoiceService {
   async create(dto: CreateSupplierInvoiceDto) {
     const { items, ...invoiceData } = dto;
     const { data, error } = await this.supabase.client.rpc(
-      'supplier_invoice_create',
+      'create_supplier_invoice',
       {
         invoice_data: invoiceData,
         items,
@@ -31,7 +31,7 @@ export class SupplierInvoiceService {
 
   async post_invoice(id: number) {
     const { error } = await this.supabase.client.rpc(
-      'supplier_invoice_post',
+      'post_supplier_invoice',
       {
         p_invoice_id: id,
       },
@@ -102,9 +102,10 @@ export class SupplierInvoiceService {
       .from('supplier_invoice_items')
       .select(
         `
+        unit_cost,
+        quantity,
         products (
           id,
-          item_code,
           item_name
         ),
         supplier_invoices (
@@ -113,14 +114,12 @@ export class SupplierInvoiceService {
           po_number,
           purchase_date,
           conversion_factor,
-          supplier (
+          suppliers (
             id,
             name,
             currency
           )
-        ),
-        unit_cost,
-        quantity
+        )
       `,
       )
       .eq('product_id', productId)
@@ -136,7 +135,7 @@ export class SupplierInvoiceService {
   /* ================= UPDATE ================= */
   async update(id: number, dto: UpdateSupplierInvoiceDto) {
     const { error } = await this.supabase.client.rpc(
-      'supplier_invoice_update',
+      'update_supplier_invoice',
       {
         p_invoice_id: id,
         p_po_number: dto.po_number,

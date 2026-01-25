@@ -2,8 +2,8 @@ import { IsArray, IsNumber, IsString, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateSalesOrderItemDto {
-  @IsString()
-  item_code: string;
+  @IsNumber()
+  item_id: number;
 
   @IsNumber()
   quantity: number;
@@ -13,11 +13,11 @@ export class CreateSalesOrderItemDto {
 }
 
 export class CreateSalesOrderDto {
-  @IsString()
-  cid: string;
+  @IsNumber()
+  cid: number;
 
-  @IsString()
-  sales_agent: string;
+  @IsNumber()
+  sales_agent: number;
 
   @IsNumber()
   discount?: number;

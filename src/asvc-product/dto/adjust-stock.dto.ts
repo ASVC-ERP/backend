@@ -2,9 +2,12 @@ import { IsNumber, IsString } from 'class-validator';
 export class AdjustStockDto {
     
     @IsNumber()
-    quantity: number; // positive or negative
+    quantity: number;
     
     @IsString()
-    reason?: string;  // optional audit reason
+    pic: string;
+
+    @IsString()
+    remarks?: string;
 }
   

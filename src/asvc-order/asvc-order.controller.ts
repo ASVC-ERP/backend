@@ -7,95 +7,116 @@ import {
   Delete,
   Param,
   Body,
+  Query,
   ValidationPipe,
   ParseIntPipe,
+  DefaultValuePipe,
 } from '@nestjs/common';
 import { OrderService } from './asvc-order.service';
 import { CreateSalesOrderDto } from './dto/create-order.dto';
 import { UpdateSalesOrderDto } from './dto/update-order.dto';
-import { ServeOrderDto } from './dto/serve-order.dto';
 
 @Controller('order')
 export class OrderController {
   constructor(private readonly service: OrderService) {}
 
+  // ====================================================================================================================================
+  // POST
+  // ====================================================================================================================================
   @Post()
   create(@Body(new ValidationPipe()) dto: CreateSalesOrderDto) {
     return this.service.create(dto);
   }
 
-  @Get()
-  findAll() {
-    return this.service.findAll();
+  @Post('id/:id/serve')
+  serve(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { items: { order_item_id: number; serve_qty: number }[] },
+  ) {
+    return this.service.serve(id, body.items);
   }
 
-  @Get(':id')
+  @Post('id/:id/request')
+  request_serve(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { items: { order_item_id: number; serve_qty: number }[] },
+  ) {
+    return this.service.request_serve(id, body.items);
+  }
+
+  @Post('id/:id/approve')
+  approve(
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.service.approve(id);
+  }
+
+  @Post('id/:id/reject')
+  reject(
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.service.reject(id);
+  }
+
+  @Post('id/:id/unserve')
+  unserve(
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.service.unserve(id);
+  }
+
+  @Post('id/:id/invoice')
+  async invoice(
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.service.invoice(id);
+  }
+
+  // ====================================================================================================================================
+  // GET
+  // ====================================================================================================================================
+  @Get()
+  async get_by_page(
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(30), ParseIntPipe) limit: number,
+    @Query('status') status?: string,
+    @Query('customer') customer?: string,
+    @Query('sortBy') sortBy?: string,
+    @Query('sortDir') sortDir: 'asc' | 'desc' = 'desc',
+  ) {
+    return this.service.get_by_page( page, limit, status, customer, sortBy, sortDir );
+  }
+
+  @Get('id/:id')
   find(@Param('id') id: number) {
     return this.service.find(id);
   }
 
-  @Get(':id/order-items')
-  find_order_items(@Param('id') id: number) {
-    return this.service.find_order_items(id);
+  @Get(':id/serve-history')
+  getServedOrdersByItem(
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.service.getServedOrdersByItem(id)
   }
 
-  @Get(':id/serve-items')
-  find_serve_items(@Param('id') id: number) {
-    return this.service.find_serve_items(id);
-  }
-
-  @Get(':item_code/serve-history')
-  find_serve(@Param('item_code') item_code: string) {
-    return this.service.find_serve(item_code);
-  }
-
-  @Patch(':id')
+  // ====================================================================================================================================
+  // PUT
+  // ====================================================================================================================================
+  @Put('id/:id')
   update(@Param('id') id: number, @Body() dto: UpdateSalesOrderDto) {
     return this.service.update(id, dto);
   }
 
-  @Delete(':id')
+  // ====================================================================================================================================
+  // PATCH
+  // ====================================================================================================================================
+
+  // ====================================================================================================================================
+  // DELETE
+  // ====================================================================================================================================
+  @Delete('id/:id')
   async delete(@Param('id') id: number) {
     await this.service.delete(id);
     return { message: 'Order' + id + ' deleted successfully' };
-  }
-
-  @Post(':id/serve')
-  async serve(
-    @Param('id')
-    id: number,
-    @Body()
-    body: {
-      items: {
-        item_code: string;
-        quantity_to_serve: number;
-      }[];
-    },
-  ) {
-    await this.service.serve(id, body.items);
-  }
-
-  @Post(':id/request')
-  async requestServe(
-    @Param('id', ParseIntPipe) id: number,
-    @Body()
-    body: { items: { item_code: string; quantity_to_serve: number }[] },
-  ) {
-    return this.service.request(id, body.items);
-  }
-
-  @Post(':id/approve')
-  async approve(@Param('id', ParseIntPipe) id: number) {
-    return this.service.approve(id);
-  }
-
-  @Post(':id/reject')
-  async reject(@Param('id', ParseIntPipe) id: number) {
-    return this.service.reject(id);
-  }
-
-  @Post(':id/invoice')
-  async invoice(@Param('id', ParseIntPipe) id: number) {
-    return this.service.invoice(id);
   }
 }
