@@ -9,7 +9,16 @@ export class InvoicesService {
   async findAll() {
     const { data, error } = await this.supabase.client
       .from('sales_invoices')
-      .select('*')
+      .select(`
+        id,
+        order_id,
+        customers ( name, address ),
+        users ( name ),
+        waybill_number,
+        courier,
+        shipping_date,
+        invoice_date
+      `)
       .order('id', { ascending: false });
 
     if (error) throw error;
