@@ -17,7 +17,8 @@ export class InvoicesService {
         waybill_number,
         courier,
         shipping_date,
-        invoice_date
+        invoice_date,
+        invoice_number
       `)
       .order('id', { ascending: false });
 
