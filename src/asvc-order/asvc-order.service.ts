@@ -151,7 +151,7 @@ export class OrderService {
         users ( username, name, role ),
         customers ( name, address, number ),
         sales_order_items ( 
-          quantity, serve_qty, price, 
+          id, quantity, serve_qty, price, 
           products ( item_code, item_name, unit, stock )
         )
       `
