@@ -52,6 +52,7 @@ export class OrderService {
   // ====================================================================================================================================
 
   async create(dto: CreateSalesOrderDto) {
+    console.log(dto);
     const { data, error } = await this.supabase.client.rpc('create_sales_order',{
         p_cid: dto.cid,
         p_sales_agent: dto.sales_agent,
@@ -172,6 +173,55 @@ export class OrderService {
       customer: data.customers,
       items: data.sales_order_items,
     };
+  }
+
+  async get_order_items_for_edit(orderId: number) {
+    const { data, error } = await this.supabase.client
+      .from('sales_order_items')
+      .select(`
+        id,
+        quantity,
+        price,
+        item_id,
+        product:products!sales_order_items_item_id_fkey!inner (
+          id,
+          item_code,
+          price1,
+          price2,
+          price3,
+          price4
+        )
+      `)
+      .eq('sales_order_id', orderId);
+
+    if (error) throw new InternalServerErrorException(error.message);
+
+    return data.map((item) => {
+      console.log(item.item_id);
+      const product = item.product as any;
+      if (!product) return null;
+
+      const prices = [
+        product.price1,
+        product.price2,
+        product.price3,
+        product.price4,
+      ]
+        .filter((p) => p !== null && p !== undefined)
+        .map(Number);
+
+      const orderedPrice = Number(item.price);
+      console.log(orderedPrice);
+
+      return {
+        id: item.id,
+        item_code: product.item_code,
+        quantity: item.quantity,
+        orderedPrice,
+        availablePrices: prices,
+        customPriceEnabled: !prices.includes(orderedPrice),
+      };
+    });
   }
   
 

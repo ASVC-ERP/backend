@@ -92,6 +92,11 @@ export class OrderController {
     return this.service.find(id);
   }
 
+  @Get(':id/order-items')
+  get_items(@Param('id') id: number) {
+    return this.service.get_order_items_for_edit(id);
+  }
+
   @Get(':id/serve-history')
   getServedOrdersByItem(
     @Param('id', ParseIntPipe) id: number,

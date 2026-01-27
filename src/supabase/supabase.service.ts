@@ -7,14 +7,15 @@ export class SupabaseService {
   private readonly logger = new Logger(SupabaseService.name);
 
   constructor() {
-    const url = process.env.SUPABASE_URL;
+    const url = process.env.SUPABASE_URL!;
     const key = process.env.SUPABASE_KEY;
+    const service = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
     if (!url || !key) {
       throw new Error('Supabase URL or KEY is missing!');
     }
 
-    this.supabase = createClient(url, key);
+    this.supabase = createClient(url, service);
     this.logger.log('Supabase client initialized');
   }
 
