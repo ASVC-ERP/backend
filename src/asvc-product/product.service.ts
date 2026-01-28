@@ -80,11 +80,7 @@ export class ProductService {
     const { data, error } = await this.supabase.client
       .from('products')
       .select(`
-          id,
-          item_code,
-          item_name,
-          unit,
-          stock
+          *
       `)
       .or(`item_name.ilike.*${q}*,item_code.ilike.*${q}*`)
       .order('item_name', { ascending: true })

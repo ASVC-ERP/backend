@@ -96,6 +96,11 @@ export class OrderService {
           *,
           customer:customers!sales_orders_cid_fkey!inner (
             id,
+            name,
+            address
+          ),
+          user:users!sales_orders_sales_agent_fkey!inner (
+            id,
             name
           )`,
         { count: 'exact' }
@@ -149,11 +154,11 @@ export class OrderService {
         total_price,
         discount,
         approval_status,
-        users ( username, name, role ),
-        customers ( name, address, number ),
+        users ( id, username, name, role ),
+        customers ( id, name, address, number ),
         sales_order_items ( 
           id, quantity, serve_qty, price, 
-          products ( item_code, item_name, unit, stock )
+          products ( id, item_code, item_name, unit, stock )
         )
       `
       )
@@ -182,10 +187,10 @@ export class OrderService {
         id,
         quantity,
         price,
-        item_id,
         product:products!sales_order_items_item_id_fkey!inner (
           id,
           item_code,
+          item_name,
           price1,
           price2,
           price3,
@@ -197,7 +202,6 @@ export class OrderService {
     if (error) throw new InternalServerErrorException(error.message);
 
     return data.map((item) => {
-      console.log(item.item_id);
       const product = item.product as any;
       if (!product) return null;
 
@@ -213,9 +217,24 @@ export class OrderService {
       const orderedPrice = Number(item.price);
       console.log(orderedPrice);
 
+      const ret = {
+        id: item.id,
+        item_id: product.id,
+        item_code: product.item_code,
+        item_name: product.item_name,
+        quantity: item.quantity,
+        orderedPrice,
+        availablePrices: prices,
+        customPriceEnabled: !prices.includes(orderedPrice),
+      }
+
+      console.log(ret);
+
       return {
         id: item.id,
+        item_id: product.id,
         item_code: product.item_code,
+        item_name: product.item_name,
         quantity: item.quantity,
         orderedPrice,
         availablePrices: prices,
