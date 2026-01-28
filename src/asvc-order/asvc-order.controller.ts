@@ -81,10 +81,9 @@ export class OrderController {
     @Query('limit', new DefaultValuePipe(30), ParseIntPipe) limit: number,
     @Query('status') status?: string,
     @Query('customer') customer?: string,
-    @Query('sortBy') sortBy?: string,
-    @Query('sortDir') sortDir: 'asc' | 'desc' = 'desc',
+    @Query('agent') agent?: string,
   ) {
-    return this.service.get_by_page( page, limit, status, customer, sortBy, sortDir );
+    return this.service.get_by_page( page, limit, status, customer, agent );
   }
 
   @Get('id/:id')

@@ -45,6 +45,7 @@ export class SupplierInvoiceService {
   async find_by_page(
     page = 1, 
     limit = 30,
+    supplier?: number,
   ) {
     limit = Math.min(limit, 100);
     const from = (page - 1) * limit;
@@ -53,9 +54,29 @@ export class SupplierInvoiceService {
     console.log({ page, limit, from, to });
 
     let query = this.supabase.client
-      .from(this.table)
-      .select('*', { count: 'exact' })
+      .from('supplier_invoices')
+      .select(
+        `
+          *,
+          supplier_invoice_items!supplier_invoice_items_invoice_id_fkey (
+            id,
+            quantity,
+            unit_cost,
+            subtotal,
+            products:product_id (
+              id,
+              item_name,
+              unit
+            )
+          )
+        `,
+        { count: 'exact' }
+      )
       .order('id', { ascending: false });
+
+    if (supplier) {
+      query = query.eq('supplier_id', supplier);
+    }
 
     const { data, error, count } = await query.range(from, to);
 

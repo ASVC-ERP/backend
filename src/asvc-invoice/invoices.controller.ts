@@ -23,6 +23,7 @@ export class InvoicesController {
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateSalesInvoiceDto,
   ) {
+    console.log("payload: ", dto);
     return this.service.update(id, dto);
   }
 }

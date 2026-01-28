@@ -82,13 +82,11 @@ export class OrderService {
     limit = 30, 
     status?: string, 
     customer?: string, 
-    sortBy = 'id', 
-    sortDir: 'asc' | 'desc' = 'desc'
+    agent?: string,
   ) {
     limit = Math.min(limit, 100);
     const from = (page - 1) * limit;
     const to = from + limit - 1;
-    const safeSortDir = sortDir === 'asc' ? 'asc' : 'desc';
 
     let query = this.supabase.client
       .from(this.table)
@@ -101,7 +99,8 @@ export class OrderService {
           ),
           user:users!sales_orders_sales_agent_fkey!inner (
             id,
-            name
+            name,
+            role
           )`,
         { count: 'exact' }
       )
@@ -110,7 +109,11 @@ export class OrderService {
       query = query.eq('status', status);
     if (customer?.trim()) 
       query = query.ilike('customer.name', `%${customer.trim()}%`);
+    if (agent?.trim())
+      query = query.eq('user.role', agent);
+    
 
+    /*
     if (sortBy.startsWith('customer.')) {
       const column = sortBy.replace('customer.', '');
       if (CUSTOMER_COLUMNS.includes(column as any)) {
@@ -124,7 +127,7 @@ export class OrderService {
       query = query.order(sortBy, { ascending: safeSortDir === 'asc' });
     else 
       query = query.order('id', { ascending: false });
-  
+    */
     
     const { data, error, count } = await query.range( from, to );
 
@@ -158,7 +161,7 @@ export class OrderService {
         customers ( id, name, address, number ),
         sales_order_items ( 
           id, quantity, serve_qty, price, 
-          products ( id, item_code, item_name, unit, stock )
+          products ( id, item_code, item_name, unit, stock, price1, price2, price3, price4 )
         )
       `
       )

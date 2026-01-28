@@ -16,22 +16,22 @@ export class SupplierInvoiceController {
   post_invoice(@Param('id', ParseIntPipe) id: number) {
     return this.service.post_invoice(id);
   }
-
 /*
   @Get()
   findAll() {
     return this.service.findAll();
   }
 */
-
   @Get()
   async find_by_page(
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(30), ParseIntPipe) limit: number,
+    @Query('supplier') supplier: number
   ) {
     return this.service.find_by_page(
       page,
       limit,
+      supplier
     );
   }
 
