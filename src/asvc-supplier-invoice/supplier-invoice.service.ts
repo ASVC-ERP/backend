@@ -74,8 +74,8 @@ export class SupplierInvoiceService {
       )
       .order('id', { ascending: false });
 
-    if (supplier) {
-      query = query.eq('supplier_id', supplier);
+    if (supplier !== undefined && supplier !== null) {
+      query = query.eq('supplier_id', Number(supplier));
     }
 
     const { data, error, count } = await query.range(from, to);
