@@ -104,6 +104,7 @@ export class OrderService {
           )`,
         { count: 'exact' }
       )
+      .order("id", {ascending: false});
 
     if (status) 
       query = query.eq('status', status);
