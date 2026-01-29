@@ -162,7 +162,7 @@ export class OrderService {
         customers ( id, name, address, number ),
         sales_order_items ( 
           id, quantity, serve_qty, price, 
-          products ( id, item_code, item_name, unit, stock, price1, price2, price3, price4 )
+          products ( id, item_code, item_name, unit, stock, cost, price1, price2, price3, price4 )
         )
       `
       )
