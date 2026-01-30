@@ -80,9 +80,7 @@ export class OrderService {
   async get_by_page( 
     page = 1, 
     limit = 30, 
-    status?: string, 
-    customer?: string, 
-    agent?: string,
+    search?: string, 
   ) {
     limit = Math.min(limit, 100);
     const from = (page - 1) * limit;
@@ -106,29 +104,8 @@ export class OrderService {
       )
       .order("id", {ascending: false});
 
-    if (status) 
-      query = query.eq('status', status);
-    if (customer?.trim()) 
-      query = query.ilike('customer.name', `%${customer.trim()}%`);
-    if (agent?.trim())
-      query = query.eq('user.role', agent);
-    
-
-    /*
-    if (sortBy.startsWith('customer.')) {
-      const column = sortBy.replace('customer.', '');
-      if (CUSTOMER_COLUMNS.includes(column as any)) {
-        query = query.order(column, {
-          ascending: safeSortDir === 'asc',
-          foreignTable: 'customer',
-        });
-      }
-    }
-    else if (ORDER_COLUMNS.includes(sortBy as any)) 
-      query = query.order(sortBy, { ascending: safeSortDir === 'asc' });
-    else 
-      query = query.order('id', { ascending: false });
-    */
+    if (search)
+      query = query.or(`item_name.ilike.%${search}%,item_code.ilike.%${search}%`);
     
     const { data, error, count } = await query.range( from, to );
 

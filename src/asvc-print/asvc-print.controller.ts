@@ -247,9 +247,9 @@ import {
       doc.fontSize(14).text('Autosync Ventures Corp.', 50, 30);
       doc.fontSize(10)
           .text(
-          'Unit 207, 210 Speaker Perez St., Corner Del Monte Ave, Quezon City',
-          50,
-          50,
+              'Unit 207, 210 Speaker Perez St., Corner Del Monte Ave, Quezon City',
+              50,
+              50,
           )
           .text('VAT Reg. TIN: 682-408-625-00000', 50, 65);
       
@@ -287,57 +287,68 @@ import {
       let y = tableTop + 25;
       
       data.items
-      .filter(item => (item.quantity || 0) > 0)
-      .forEach(item => {
-          const amount = item.quantity * item.price;
-      
-          const descHeight = doc.heightOfString(item.itemName, {
-          width: 220,
+          .filter(item => (item.quantity || 0) > 0)
+          .forEach(item => {
+              const amount = item.quantity * item.price;
+              
+              const descHeight = doc.heightOfString(item.itemName, {
+                  width: 220,
+              });
+              
+              doc.text(item.quantity.toString(), colX.qty, y);
+              doc.text(item.unit, colX.unit, y);
+              doc.text(item.itemName, colX.desc, y, { width: 220 });
+              doc.text(item.price.toFixed(2), colX.price, y);
+              doc.text(amount.toFixed(2), colX.amount, y);
+              
+              y += Math.max(descHeight, 20) + 3;
           });
       
-          doc.text(item.quantity.toString(), colX.qty, y);
-          doc.text(item.unit, colX.unit, y);
-          doc.text(item.itemName, colX.desc, y, { width: 220 });
-          doc.text(item.price.toFixed(2), colX.price, y);
-          doc.text(amount.toFixed(2), colX.amount, y);
-      
-          y += Math.max(descHeight, 20) + 5;
-      });
-      
       // ===== VAT TOTALS =====
-      const { netTotal, vatableSales, vat } =
-          this.computeTotals(data.items);
+      const { netTotal, vatableSales, vat } = this.computeTotals(data.items);
       
       y += 20;
       doc.text('Vatable Sales:', colX.price, y);
       doc.text(vatableSales.toFixed(2), colX.amount, y);
+      doc.fontSize(8).text('Received the above goods in good order and condition.', colX.qty, y);
       
       y += 20;
-      doc.text('VAT (12%):', colX.price, y);
+      doc.fontSize(10).text('VAT (12%):', colX.price, y);
       doc.text(vat.toFixed(2), colX.amount, y);
+      doc.fontSize(8).text('By: ___________________________', colX.qty, y);
+      doc.text('Signature', colX.qty + 56, y + 10);
       
       y += 20;
-      doc.font('Helvetica-Bold').text('Total Amount Due:', colX.price, y);
+      doc.text('Date: ________________________', colX.qty, y);
+      doc.fontSize(10).font('Helvetica-Bold').text('Total Amount Due:', colX.price, y);
       doc.text(netTotal.toFixed(2), colX.amount, y);
       
       // ===== FOOTER =====
-      y += 50;
-      doc.fontSize(8).text(
-          'Received the above goods in good order and condition.',
-          colX.price,
-          y,
-      );
+      const drawFooter = () => {
+        const footerY =
+          doc.page.height - doc.page.margins.bottom - 10;
+
+        doc
+          .fontSize(8)
+          .text(
+            'Sales Invoice to Follow',
+            doc.page.margins.left,
+            footerY,
+            {
+              width:
+                doc.page.width -
+                doc.page.margins.left -
+                doc.page.margins.right,
+              align: 'center',
+            },
+          );
+      };
       
-      doc.text('By: ___________________________', colX.price, y + 20);
-      doc.text('Signature', colX.price+50, y + 30);
-      doc.text('Date: ________________________', colX.price, y + 50);
-      
-      doc.text('Sales Invoice to Follow', 0, doc.page.height - 50, {
-          align: 'center',
-      });
+      drawFooter();
+      doc.on('pageAdded', drawFooter);
       
       doc.end();
-    }
+  }
       
 
     private generate_dr_b(data: any, res: Response) {

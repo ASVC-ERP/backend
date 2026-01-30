@@ -11,6 +11,10 @@ import { Type } from 'class-transformer';
 class UpdateSalesOrderItemDto {
   @IsOptional()
   @IsNumber()
+  id?: number;
+
+  @IsOptional()
+  @IsNumber()
   item_id: number;
 
   @IsOptional()
