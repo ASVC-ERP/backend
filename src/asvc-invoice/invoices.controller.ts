@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Delete, Patch,  Body, Param, ParseIntPipe } from '@nestjs/common';
+import { Controller, Post, Get, Delete, Patch,  Body, Param, Query, ParseIntPipe, DefaultValuePipe } from '@nestjs/common';
 import { InvoicesService } from './invoices.service';
 import { UpdateSalesInvoiceDto } from './dto/update-invoice.dto';
 
@@ -7,8 +7,12 @@ export class InvoicesController {
   constructor(private readonly service: InvoicesService) {}
 
   @Get()
-  findAll() {
-    return this.service.findAll();
+  async get_by_page(
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(30), ParseIntPipe) limit: number,
+    @Query('search') search?: string,
+  ) {
+    return this.service.get_by_page( page, limit, search );
   }
 
   @Get(':id')

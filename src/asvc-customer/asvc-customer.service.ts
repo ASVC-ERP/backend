@@ -1,4 +1,9 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, 
+  InternalServerErrorException,
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException
+} from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
@@ -90,12 +95,45 @@ export class CustomerService {
   }
 
   async delete(id: number) {
-    const { data, error } = await this.supabase.client
-      .from(this.table)
-      .delete()
-      .eq('id', id);
+    try {
+      const { data: existingCustomer, error: fetchError } = await this.supabase.client
+        .from(this.table)
+        .select('id, name')
+        .eq('id', id)
+        .single();
+  
+      if (fetchError || !existingCustomer)
+        throw new NotFoundException(`Customer with ID ${id} not found`);
+  
+      const { data, error } = await this.supabase.client
+        .from(this.table)
+        .delete()
+        .eq('id', id)
+        .select();
+  
+      if (error) {
+        if (error.code === '23503')
+          throw new BadRequestException(`Cannot delete ${existingCustomer.name} with ID ${id}. This customer has related records (orders, invoices, transactions, etc.)`);
+        if (error.code === '42501')
+          throw new ForbiddenException(`You do not have permission to delete customer with ID ${id}`);
+        // Generic database error
+        throw new InternalServerErrorException(`Failed to delete customer with ID ${id}: ${error.message}`);
+      }
+  
+      return {
+        deleted: true,
+        message: `Customer "${existingCustomer.name}" (ID: ${id}) deleted successfully`,
+        data: data?.[0] ?? null
+      };
+    } catch (error) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException ||
+        error instanceof ForbiddenException ||
+        error instanceof InternalServerErrorException
+      ) throw error;
 
-    if (error) throw new Error(error.message);
-    return data?.[0] ?? null;
+      throw new InternalServerErrorException(`An unexpected error occurred while deleting customer with ID ${id}: ${error.message}`);
+    }
   }
 }

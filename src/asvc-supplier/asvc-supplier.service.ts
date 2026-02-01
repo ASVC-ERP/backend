@@ -1,4 +1,9 @@
-import { Injectable, BadRequestException} from '@nestjs/common';
+import { Injectable, 
+  BadRequestException,
+  NotFoundException,
+  ForbiddenException,
+  InternalServerErrorException
+} from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { CreateSupplierDto } from './dto/create-supplier.dto';
 import { UpdateSupplierDto } from './dto/update-supplier.dto';
@@ -54,12 +59,45 @@ export class SupplierService {
   }
 
   async delete(id: string) {
-    const { error } = await this.supabase.client
-      .from(this.table)
-      .delete()
-      .eq('id', id);
+    try {
+      const { data: existingSupplier, error: fetchError } = await this.supabase.client
+        .from(this.table)
+        .select('id, name')
+        .eq('id', id)
+        .single();
+  
+      if (fetchError || !existingSupplier)
+        throw new NotFoundException(`Supplier with ID ${id} not found`);
+  
+      const { error } = await this.supabase.client
+        .from(this.table)
+        .delete()
+        .eq('id', id);
+  
+      if (error) {
+        if (error.code === '23503')
+          throw new BadRequestException(`Cannot delete ${existingSupplier.name} with ID: ${id}. This supplier has related records (products, purchase orders, transactions, etc.)`);
+        if (error.code === '42501')
+          throw new ForbiddenException(`You do not have permission to delete supplier with ID ${id}`);
+        if (error.message.includes('violates'))
+          throw new BadRequestException(`Cannot delete supplier with ID ${id}. Database constraint violation: ${error.message}`);
+        // Generic database error
+        throw new InternalServerErrorException(`Failed to delete supplier with ID ${id}: ${error.message}`);
+      }
+  
+      return { 
+        success: true,
+        message: `Supplier "${existingSupplier.name}" (ID: ${id}) deleted successfully`
+      };
+    } catch (error) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException ||
+        error instanceof ForbiddenException ||
+        error instanceof InternalServerErrorException
+      ) throw error;
 
-    if (error) throw new BadRequestException("Cannot delete supplier");
-    return { success: true };
+      throw new InternalServerErrorException(`An unexpected error occurred while deleting supplier with ID ${id}: ${error.message}`);
+    }
   }
 }

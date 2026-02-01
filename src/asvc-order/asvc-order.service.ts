@@ -3,6 +3,7 @@ import {
   BadRequestException,
   NotFoundException,
   InternalServerErrorException,
+  ForbiddenException,
   ConflictException
 } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
@@ -60,8 +61,8 @@ export class OrderService {
         p_items: dto.items
       });
     
-    if (error) throw new BadRequestException(error.message);;
-    return { created: true };
+    if (error) throw new BadRequestException(error.message);
+    return data;
   }
 
   // ====================================================================================================================================
@@ -77,45 +78,55 @@ export class OrderService {
   // SAMPLE PAYLOAD: NA
   // ====================================================================================================================================
 
-  async get_by_page( 
-    page = 1, 
-    limit = 30, 
-    search?: string, 
+  async get_by_page(
+    page = 1,
+    limit = 30,
+    search?: string,
   ) {
     limit = Math.min(limit, 100);
     const from = (page - 1) * limit;
     const to = from + limit - 1;
-
+  
     let query = this.supabase.client
       .from(this.table)
-      .select(`
-          *,
-          customer:customers!sales_orders_cid_fkey!inner (
-            id,
-            name,
-            address
-          ),
-          user:users!sales_orders_sales_agent_fkey!inner (
-            id,
-            name,
-            role
-          )`,
+      .select(
+        `
+        *,
+        customer:customers!sales_orders_cid_fkey!inner (
+          id,
+          name,
+          address
+        ),
+        user:users!sales_orders_sales_agent_fkey!inner (
+          id,
+          name,
+          role
+        )
+        `,
         { count: 'exact' }
       )
-      .order("id", {ascending: false});
-
-    if (search)
-      query = query.or(`item_name.ilike.%${search}%,item_code.ilike.%${search}%`);
-    
-    const { data, error, count } = await query.range( from, to );
-
+      .order("id", { ascending: false });
+  
+    // 🔹 Add search condition if present
+    if (search && search.trim()) {
+      const sanitized = search.replace(/'/g, "''"); // escape single quotes
+      query = query.ilike('customer.name', `%${sanitized}%`);
+    }
+  
+    const { data, error, count } = await query.range(from, to);
+  
     if (error) throw new InternalServerErrorException(error.message);
-
+  
     return {
       data,
-      meta: { page, limit, total: count ?? 0, totalPages: Math.ceil((count ?? 0) / limit), },
+      meta: {
+        page,
+        limit,
+        total: count ?? 0,
+        totalPages: Math.ceil((count ?? 0) / limit),
+      },
     };
-  }
+  }  
 
   // ====================================================================================================================================
   // READ BY ID
@@ -280,15 +291,43 @@ export class OrderService {
   // SAMPLE PAYLOAD: NA
   // ====================================================================================================================================
   async delete(id: number) {
-    const { error } = await this.supabase.client.rpc('delete_sales_order', { 
-      p_order_id: id 
-    });
+    try {
+      const { data, error } = await this.supabase.client.rpc('delete_sales_order', { 
+        p_order_id: id 
+      });
   
-    if (error) {
-      if (error.message.includes('not found')) throw new NotFoundException(`Order ${id} not found`);
-      throw new BadRequestException(error.message);
+      if (error) {
+        if (error.message.includes('not found') || error.code === 'PGRST116')
+          throw new NotFoundException(`Sales order with ID ${id} not found`);
+        if (error.message.includes('foreign key') || error.code === '23503')
+          throw new BadRequestException(`Cannot delete sales order with ID ${id}. This order has related records that must be removed first`);
+        if (error.message.includes('permission') || error.code === '42501')
+          throw new ForbiddenException(`You do not have permission to delete sales order with ID ${id}`);
+        if (error.message.includes('has invoice') || error.message.includes('invoiced')) 
+          throw new BadRequestException(`Cannot delete sales order with ID ${id}. Order has already been invoiced`);
+        if (error.message.includes('served') || error.message.includes('status'))
+          throw new BadRequestException(`Cannot delete sales order with ID ${id}. Only orders with status 'Open' or 'For Approval' can be deleted`);
+        // Generic database error
+        throw new InternalServerErrorException(`Failed to delete sales order with ID ${id}: ${error.message}`);
+      }
+
+      if (data === false || (typeof data === 'object' && data?.success === false))
+        throw new BadRequestException(`Failed to delete sales order with ID ${id}. ${data?.message || 'Unknown error'}`);
+  
+      return { 
+        deleted: true, 
+        message: `Sales order with ID ${id} deleted successfully` 
+      };
+    } catch (error) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException ||
+        error instanceof ForbiddenException ||
+        error instanceof InternalServerErrorException
+      ) throw error;
+
+      throw new InternalServerErrorException(`An unexpected error occurred while deleting sales order with ID ${id}: ${error.message}`);
     }
-    return { deleted: true };
   }
 
   // ====================================================================================================================================

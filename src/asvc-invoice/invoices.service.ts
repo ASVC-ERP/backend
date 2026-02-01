@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, NotFoundException} from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, InternalServerErrorException, } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { UpdateSalesInvoiceDto } from './dto/update-invoice.dto';
 
@@ -6,29 +6,51 @@ import { UpdateSalesInvoiceDto } from './dto/update-invoice.dto';
 export class InvoicesService {
   constructor(private readonly supabase: SupabaseService) {}
 
-  async findAll() {
-    const { data, error } = await this.supabase.client
-      .from('sales_invoices')
-      .select(`
-        id,
-        order_id,
-        customers ( name, address ),
-        users ( name ),
-        waybill_number,
-        courier,
-        shipping_date,
-        invoice_date,
-        invoice_number
-      `)
-      .order('id', { ascending: false });
+  private readonly table = 'sales_invoices';
 
-    if (error) throw error;
-    return data;
+  async get_by_page( 
+    page = 1, 
+    limit = 100, 
+    search?: string, 
+  ) {
+    limit = Math.min(limit, 500);
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
+
+    let query = this.supabase.client
+      .from(this.table)
+      .select(`
+          *,
+          customer:customers!sales_invoices_cid_fkey!inner (
+            id,
+            name,
+            address
+          ),
+          user:users!sales_invoices_sales_agent_fkey!inner (
+            id,
+            name,
+            role
+          )`,
+        { count: 'exact' }
+      )
+      .order("id", {ascending: false});
+
+    if (search)
+      query = query.or(`item_name.ilike.%${search}%,item_code.ilike.%${search}%`);
+    
+    const { data, error, count } = await query.range( from, to );
+
+    if (error) throw new InternalServerErrorException(error.message);
+
+    return {
+      data,
+      meta: { page, limit, total: count ?? 0, totalPages: Math.ceil((count ?? 0) / limit), },
+    };
   }
 
   async find(id: number) {
     const { data, error } = await this.supabase.client
-      .from('sales_invoices')
+      .from(this.table)
       .select(`
         id,
         total_price,
@@ -76,7 +98,7 @@ export class InvoicesService {
 
   async update( id: number, dto: UpdateSalesInvoiceDto ) {
     const { data, error } = await this.supabase.client
-      .from('sales_invoices')
+      .from(this.table)
       .update(dto)
       .eq('id', id)
       .select()

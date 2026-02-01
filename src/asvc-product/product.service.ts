@@ -188,12 +188,34 @@ export class ProductService {
 
   // DELETE
   async remove(id: number) {
-    const { error } = await this.supabase.client
-      .from('products')
-      .delete()
-      .eq('id', id);
-
-    if (error) throw new BadRequestException('Cannot Delete Product.');;
-    return { message: 'Product deleted successfully' };
+    try {
+      const { data: existingProduct, error: fetchError } = await this.supabase.client
+        .from('products')
+        .select('id, item_name')
+        .eq('id', id)
+        .single();
+  
+      if (fetchError) throw new NotFoundException(`Product with ID ${id} not found`); 
+  
+      const { error } = await this.supabase.client
+        .from('products')
+        .delete()
+        .eq('id', id);
+  
+      if (error) {
+        if (error.code === '23503')
+          throw new BadRequestException( `Cannot delete ${existingProduct.item_name} with ID ${id}. This product is referenced by other records (orders, inventory, etc.)` );
+        throw new InternalServerErrorException( `Failed to delete product: ${error.message}` );
+      }
+  
+      return { message: `Product with ID ${id} deleted successfully` };
+    } catch (error) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException ||
+        error instanceof InternalServerErrorException
+      ) throw error;
+      throw new InternalServerErrorException( `An unexpected error occurred while deleting product with ID ${id}` );
+    }
   }
 }
