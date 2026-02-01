@@ -115,6 +115,7 @@ export class ProductService {
 
   async adjust_stock(id: number, dto: AdjustStockDto) {
     const { quantity: newStock, pic, remarks } = dto;
+    console.log("dto: ", dto)
     
     if (newStock < 0) 
       throw new BadRequestException('Stock cannot be negative');

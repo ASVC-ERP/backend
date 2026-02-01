@@ -144,6 +144,7 @@ export class SupplierInvoiceService {
       `,
       )
       .eq('product_id', productId)
+      .eq('supplier_invoices.status', 'POSTED')
       .order('purchase_date', {
         foreignTable: this.table,
         ascending: false,

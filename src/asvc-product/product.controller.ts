@@ -69,10 +69,11 @@ export class ProductController {
 
   @Patch(':id/stock')
   adjust_stock(
-    @Param('id') id: string,
+    @Param('id') id: number,
     @Body() dto: AdjustStockDto,
   ) {
-    return this.service.adjust_stock(+id, dto);
+    console.log(dto)
+    return this.service.adjust_stock(id, dto);
   }
 
   @Patch(':id/price')

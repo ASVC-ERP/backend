@@ -3,10 +3,9 @@ export class AdjustStockDto {
     
     @IsNumber()
     quantity: number;
-    
-    @IsOptional()
-    @IsString()
-    pic: string;
+
+    @IsNumber()
+    pic: number;
 
     @IsString()
     remarks?: string;

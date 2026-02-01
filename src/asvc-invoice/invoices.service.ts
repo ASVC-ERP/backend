@@ -9,9 +9,9 @@ export class InvoicesService {
   private readonly table = 'sales_invoices';
 
   async get_by_page( 
-    page = 1, 
-    limit = 100, 
-    search?: string, 
+    page = 1,
+    limit = 100,
+    search?: string,
   ) {
     limit = Math.min(limit, 500);
     const from = (page - 1) * limit;
@@ -35,8 +35,10 @@ export class InvoicesService {
       )
       .order("id", {ascending: false});
 
-    if (search)
-      query = query.or(`item_name.ilike.%${search}%,item_code.ilike.%${search}%`);
+    if (search && search.trim()) {
+      const sanitized = search.replace(/'/g, "''"); // escape single quotes
+      query = query.ilike('customer.name', `%${sanitized}%`);
+    }
     
     const { data, error, count } = await query.range( from, to );
 
