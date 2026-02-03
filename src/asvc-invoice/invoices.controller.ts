@@ -9,10 +9,19 @@ export class InvoicesController {
   @Get()
   async get_by_page(
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-    @Query('limit', new DefaultValuePipe(30), ParseIntPipe) limit: number,
+    @Query('limit', new DefaultValuePipe(100), ParseIntPipe) limit: number,
     @Query('search') search?: string,
   ) {
     return this.service.get_by_page( page, limit, search );
+  }
+
+  @Get('search')
+  async search(
+    @Query('q') q: string,
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
+  ) {
+    console.log("Search Query: ", q);
+    return this.service.search(q, limit);
   }
 
   @Get(':id')

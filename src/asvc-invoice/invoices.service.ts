@@ -50,6 +50,29 @@ export class InvoicesService {
     };
   }
 
+  async search(query: string, limit = 20) {
+    const q = query?.trim();
+  
+    if (!q) {
+      return [];
+    }
+  
+    const { data, error } = await this.supabase.client
+      .from(this.table)
+      .select(`
+          *,
+          customer:customers!inner (
+            name
+          )
+      `)
+      .ilike('customers.name', `%${q}%`)
+      .order('id', { ascending: false })
+      .limit(limit);
+    
+    if (error) throw new NotFoundException('Cannot find ' + q);
+    return data;
+  }
+
   async find(id: number) {
     const { data, error } = await this.supabase.client
       .from(this.table)

@@ -29,7 +29,7 @@ export class ProductService {
     limit = 100,
     search?: string,
   ) {
-    limit = Math.min(limit, 100);
+    limit = Math.min(limit, 1000);
     const from = (page - 1) * limit;
     const to = from + limit - 1;
 
