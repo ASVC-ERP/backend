@@ -176,9 +176,15 @@ export class ProductService {
   }
 
   async adjust_cost(id: number, dto: AdjustCostDto) {
+    const { cost } = dto;
     const { data, error } = await this.supabase.client
       .from('products')
-      .update({ cost: dto.cost })
+      .update({ 
+        cost: cost,
+        price1: Math.round(cost * 1.5), // cost + 50%
+        price2: Math.round(cost * 1.4), // cost + 40%
+        price3: Math.round(cost * 1.3) // cost + 30%
+      })
       .eq('id', id)
       .select()
       .single();
