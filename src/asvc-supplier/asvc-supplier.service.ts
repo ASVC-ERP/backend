@@ -35,6 +35,26 @@ export class SupplierService {
     return data;
   }
 
+  async search(query: string, limit = 20) {
+    const q = query?.trim();
+
+    if (!q) {
+      return [];
+    }
+
+    const { data, error } = await this.supabase.client
+      .from(this.table)
+      .select(`
+          *
+      `)
+      .ilike('name', `%${q}%`)
+      .order('id', { ascending: false })
+      .limit(limit);
+
+    if (error) throw new NotFoundException('Cannot find ' + q);
+    return data;
+  }
+
   async read_one(id: string) {
     const { data, error } = await this.supabase.client
       .from(this.table)

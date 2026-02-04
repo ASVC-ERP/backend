@@ -84,6 +84,15 @@ export class OrderController {
     return this.service.get_by_page( page, limit, search );
   }
 
+  @Get('search')
+  async search(
+    @Query('q') q: string,
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
+  ) {
+    console.log("Search Query: ", q);
+    return this.service.search(q, limit);
+  }
+
   @Get('id/:id')
   find(@Param('id') id: number) {
     return this.service.find(id);

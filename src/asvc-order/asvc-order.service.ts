@@ -129,6 +129,37 @@ export class OrderService {
   }  
 
   // ====================================================================================================================================
+  // SEARCH
+  // ====================================================================================================================================
+  // DESCRIPTION: This API call searches a string in the table. This is done due to the limited rows (1000) for read requests
+  // API: localhost:3000/api/order/search?q=<:string>
+  // SAMPLE PAYLOAD: NA
+  // ====================================================================================================================================
+
+  async search(query: string, limit = 20) {
+    const q = query?.trim();
+  
+    if (!q) {
+      return [];
+    }
+  
+    const { data, error } = await this.supabase.client
+      .from(this.table)
+      .select(`
+          *,
+          customer:customers!inner (
+            name
+          )
+      `)
+      .ilike('customers.name', `%${q}%`)
+      .order('id', { ascending: false })
+      .limit(limit);
+    
+    if (error) throw new NotFoundException('Cannot find ' + q);
+    return data;
+  }
+
+  // ====================================================================================================================================
   // READ BY ID
   // ====================================================================================================================================
   // DESCRIPTION: This API call reads a maximum of 30 orders per page. This is done due to the limited rows (1000) for read requests

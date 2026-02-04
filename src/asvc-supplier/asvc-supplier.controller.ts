@@ -6,6 +6,9 @@ import {
   Param,
   Put,
   Delete,
+  Query,
+  DefaultValuePipe,
+  ParseIntPipe,
   ValidationPipe,
 } from '@nestjs/common';
 import { SupplierService } from './asvc-supplier.service';
@@ -24,6 +27,15 @@ export class SupplierController {
   @Get()
   read() {
     return this.service.read();
+  }
+
+  @Get('search')
+  async search(
+    @Query('q') q: string,
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
+  ) {
+    console.log("Search Query: ", q);
+    return this.service.search(q, limit);
   }
 
   @Get(':id')

@@ -17,6 +17,15 @@ export class CustomerController {
     return this.service.read();
   }
 
+  @Get('search')
+  async search(
+    @Query('q') q: string,
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
+  ) {
+    console.log("Search Query: ", q);
+    return this.service.search(q, limit);
+  }
+
 /*
   @Get()
   async get_by_page(
@@ -29,7 +38,6 @@ export class CustomerController {
     return this.service.read_all( page, limit, filter, sortBy, sortDir );
   }
 */
-
 
   @Get(':id')
   async read_one(@Param('id') id: number) {

@@ -82,6 +82,26 @@ export class CustomerService {
     return data;
   }
 
+  async search(query: string, limit = 20) {
+    const q = query?.trim();
+
+    if (!q) {
+      return [];
+    }
+
+    const { data, error } = await this.supabase.client
+      .from('customers')
+      .select(`
+          *
+      `)
+      .or(`name.ilike.*${q}*,address.ilike.*${q}*`)
+      .order('id', { ascending: true })
+      .limit(limit);
+
+    if (error) throw new NotFoundException('Customer not found');
+    return data;
+  }
+
   async update(id: number, dto: UpdateCustomerDto) {
     console.log(id);
     const { data, error } = await this.supabase.client
