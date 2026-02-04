@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsNumber, IsDate, IsNotEmpty } from 'class-validator';
+import { IsOptional, IsString, IsNotEmpty } from 'class-validator';
 
 export class CreateCustomerDto {
   @IsNotEmpty()
@@ -24,4 +24,8 @@ export class CreateCustomerDto {
   @IsOptional()
   @IsString()
   pic?: string;
+
+  @IsOptional()
+  @IsString()
+  city?: string;
 }
