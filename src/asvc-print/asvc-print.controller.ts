@@ -152,12 +152,12 @@ import {
       doc.text(`Date: ${data.date}`, 440, 120 - y_offset);
       doc.text(`Customer: ${data.customerName}`, 50, 120 - y_offset);
       doc.text(`Address: ${data.customerAddress}`, 50, 135 - y_offset, {
-        width: 300,
+        width: 370,
       });
       doc.text(`TIN: ${data.customerTIN}`, 440, 135 - y_offset );
   
       // ===== TABLE =====
-      const tableTop = 170 - y_offset;
+      const tableTop = 180 - y_offset;
       const colX = {
         qty: 50,
         unit: 100,
