@@ -120,35 +120,7 @@ export class SupplierInvoiceService {
 
   async get_costs(productId: number) {
     const { data, error } = await this.supabase.client
-      .from('supplier_invoice_items')
-      .select(
-        `
-        unit_cost,
-        quantity,
-        products (
-          id,
-          item_name
-        ),
-        supplier_invoices (
-          id,
-          invoice_number,
-          po_number,
-          purchase_date,
-          conversion_factor,
-          suppliers (
-            id,
-            name,
-            currency
-          )
-        )
-      `,
-      )
-      .eq('product_id', productId)
-      .eq('supplier_invoices.status', 'POSTED')
-      .order('purchase_date', {
-        foreignTable: this.table,
-        ascending: false,
-      });
+    .rpc( 'get_invoices_by_product', { p_product_id: productId }, );
 
     if (error) throw error;
     return data;
