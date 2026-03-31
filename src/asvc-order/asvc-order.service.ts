@@ -159,6 +159,46 @@ export class OrderService {
     return data;
   }
 
+
+  // order.service.ts
+  async get_latest_orders() {
+    try {
+      const { data, error } = await this.supabase.client
+        .from('sales_orders')
+        .select(`
+          *,
+          customers!inner(name)  
+        `)
+        .eq('status', "Open")
+        .order('created_at', { ascending: false })
+        .limit(3);
+
+      if (error) throw error;
+      return data;
+    } catch (err) {
+      console.error('Failed to fetch latest orders:', err);
+      throw new InternalServerErrorException('Cannot fetch latest orders');
+    }
+  }
+
+  // ====================================================================================================================================
+  // GET NUMBER OF ORDERS
+  // ====================================================================================================================================
+  // DESCRIPTION: This API call reads number of orders
+  // API: localhost:3000/api/order/count
+  // SAMPLE PAYLOAD: NA
+  // ====================================================================================================================================
+
+  async count() {
+    const { count, error } = await this.supabase.client
+      .from('sales_orders')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'Open');
+
+    if (error) throw new InternalServerErrorException("Cannot get orders count");
+    return count;
+  }
+
   // ====================================================================================================================================
   // READ BY ID
   // ====================================================================================================================================

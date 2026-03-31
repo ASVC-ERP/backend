@@ -70,6 +70,15 @@ export class ProductService {
     return data;
   }
 
+  async count() {
+    const { count, error } = await this.supabase.client
+      .from('products')
+      .select('*', { count: 'exact', head: true });
+
+    if (error) throw new InternalServerErrorException('Failed to fetch product count');
+    return count;
+  }
+
   async search(query: string, limit = 20) {
     const q = query?.trim();
   

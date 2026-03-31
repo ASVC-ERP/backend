@@ -29,6 +29,11 @@ export class SupplierController {
     return this.service.read();
   }
 
+  @Get('count')
+  async count() {
+    return this.service.count();
+  }
+
   @Get('search')
   async search(
     @Query('q') q: string,

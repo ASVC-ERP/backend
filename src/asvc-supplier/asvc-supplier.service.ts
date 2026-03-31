@@ -35,6 +35,15 @@ export class SupplierService {
     return data;
   }
 
+  async count() {
+    const { count, error } = await this.supabase.client
+      .from(this.table)
+      .select('*', { count: 'exact', head: true });
+
+    if (error) throw new InternalServerErrorException("Cannot get supplier count");
+    return count;
+  }
+
   async search(query: string, limit = 20) {
     const q = query?.trim();
 

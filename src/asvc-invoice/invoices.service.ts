@@ -50,6 +50,25 @@ export class InvoicesService {
     };
   }
 
+  async get_latest_invoices() {
+    try {
+      const { data, error } = await this.supabase.client
+        .from('sales_invoices')
+        .select(`
+          *,
+          customers!inner(name)  
+        `)
+        .order('created_at', { ascending: false })
+        .limit(3);
+
+      if (error) throw error;
+      return data;
+    } catch (err) {
+      console.error('Failed to fetch latest invoices:', err);
+      throw new InternalServerErrorException('Cannot fetch latest invoices');
+    }
+  }
+
   async search(query: string, limit = 20) {
     const q = query?.trim();
   

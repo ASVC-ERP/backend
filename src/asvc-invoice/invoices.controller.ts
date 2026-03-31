@@ -15,6 +15,11 @@ export class InvoicesController {
     return this.service.get_by_page( page, limit, search );
   }
 
+  @Get('latest')
+  async get_latest_invoices() {
+    return this.service.get_latest_invoices();
+  }
+
   @Get('search')
   async search(
     @Query('q') q: string,

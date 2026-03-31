@@ -40,6 +40,11 @@ export class ProductController {
     );
   }
 
+  @Get('count')
+  async count() {
+    return this.service.count();
+  }
+
   @Get('search')
   async search(
     @Query('q') q: string,

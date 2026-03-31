@@ -84,6 +84,16 @@ export class OrderController {
     return this.service.get_by_page( page, limit, search );
   }
 
+  @Get('latest')
+  async get_latest_orders() {
+    return this.service.get_latest_orders();
+  }
+
+  @Get('count')
+  async count() {
+    return this.service.count();
+  }
+
   @Get('search')
   async search(
     @Query('q') q: string,

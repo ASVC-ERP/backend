@@ -82,6 +82,15 @@ export class CustomerService {
     return data;
   }
 
+  async count () {
+    const { count, error } = await this.supabase.client
+      .from('customers')
+      .select('*', { count: 'exact', head: true });
+
+    if (error) throw new InternalServerErrorException('Failed to fetch customer count');
+    return count;
+  }
+
   async search(query: string, limit = 20) {
     const q = query?.trim();
 
