@@ -8,42 +8,33 @@ export class InvoicesService {
 
   private readonly table = 'sales_invoices';
 
-  async get_by_page( 
-    page = 1,
-    limit = 100,
-    search?: string,
-  ) {
+  async get_by_page( page = 1, limit = 100, search?: string,) {
     limit = Math.min(limit, 500);
     const from = (page - 1) * limit;
     const to = from + limit - 1;
-
+  
     let query = this.supabase.client
       .from(this.table)
       .select(`
           *,
-          customer:customers!sales_invoices_cid_fkey!inner (
-            id,
-            name,
-            address
-          ),
-          user:users!sales_invoices_sales_agent_fkey!inner (
-            id,
-            name,
-            role
-          )`,
-        { count: 'exact' }
-      )
-      .order("id", {ascending: false});
-
+          customer:customers!sales_invoices_cid_fkey!inner ( id, name, address ),
+          user:users!sales_invoices_sales_agent_fkey!inner ( id, name, role )
+        `, { count: 'exact' })
+      .order("id", { ascending: false });
+  
     if (search && search.trim()) {
-      const sanitized = search.replace(/'/g, "''"); // escape single quotes
-      query = query.ilike('customer.name', `%${sanitized}%`);
+      const sanitized = search.replace(/'/g, "''");
+      const isNumeric = !isNaN(Number(search));
+      if (isNumeric) {
+        query = query.or( `order_id.eq.${Number(search)}` );
+      } else {
+        query = query.ilike('customer.name', `%${sanitized}%`);
+      }
     }
-    
-    const { data, error, count } = await query.range( from, to );
-
+  
+    const { data, error, count } = await query.range(from, to);
     if (error) throw new InternalServerErrorException(error.message);
-
+  
     return {
       data,
       meta: { page, limit, total: count ?? 0, totalPages: Math.ceil((count ?? 0) / limit), },

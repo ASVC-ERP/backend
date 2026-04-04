@@ -25,48 +25,37 @@ export class CustomerService {
     return data;
   }
 
-  async read() {
-    const { data, error } = await this.supabase.client
-      .from(this.table)
-      .select('*')
-      .order('id', { ascending: false });
-
-    if (error) throw new Error(error.message);
-    return data;
-  }
-
   async read_all(
     page = 1,
     limit = 30,
-    filter?: string,
-    sortBy?: string,
-    sortDir: 'asc' | 'desc' = 'desc',
+    search?: string,
   ) {
+    limit = Math.min(limit, 1000);
     const from = (page - 1) * limit;
     const to = from + limit - 1;
-  
-    let query = this.supabase.client.from(this.table).select('*', { count: 'exact' });
-  
-    if (filter) {
-      query = query.ilike('name', `%${filter}%`);
-    }
-  
-    const columns = ['id', 'name', 'terms'];
-    if (sortBy && columns.includes(sortBy))
-      query = query.order(sortBy, { ascending: sortDir === 'asc' });
-    else
-      query = query.order('id', { ascending: false });
 
-    query = query.range(from, to);
-    const { data, error, count } = await query;
-  
-    if (error) 
-      throw new InternalServerErrorException(error.message);
-  
+    console.log({ page, limit, from, to, search });
+
+    let query = this.supabase.client
+      .from(this.table)
+      .select('*', { count: 'exact' })
+      .order('id', { ascending: false });
+
+    if (search) {
+      query = query.ilike('name', `%${search}%`);
+    }
+
+    const { data, error, count } = await query.range(from, to);
+
+    if (error) throw new InternalServerErrorException(error.message);
+
     return {
       data,
-      meta: { 
-        page, limit, total: count ?? 0, totalPages: Math.ceil((count ?? 0) / limit) 
+      meta: {
+        page,
+        limit,
+        total: count ?? 0,
+        totalPages: Math.ceil((count ?? 0) / limit),
       },
     };
   }

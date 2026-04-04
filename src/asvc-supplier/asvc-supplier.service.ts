@@ -25,14 +25,39 @@ export class SupplierService {
     return data;
   }
 
-  async read() {
-    const { data, error } = await this.supabase.client
-      .from(this.table)
-      .select('*')
-      .order('sid', { ascending: true });
+  async find_by_page(
+    page = 1, 
+    limit = 100,
+    search?: string,
+  ) {
+    limit = Math.min(limit, 1000);
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
 
-    if (error) throw new BadRequestException("Cannot find supplier");
-    return data;
+    console.log({ page, limit, from, to, search });
+
+    let query = this.supabase.client
+      .from(this.table)
+      .select('*', { count: 'exact' })
+      .order('id', { ascending: false });
+
+    if (search) {
+      query = query.or(`sid.ilike.%${search}%,name.ilike.%${search}%`);
+    }
+
+    const { data, error, count } = await query.range(from, to);
+
+    if (error) throw new InternalServerErrorException(error.message);
+
+    return {
+      data,
+      meta: {
+        page,
+        limit,
+        total: count ?? 0,
+        totalPages: Math.ceil((count ?? 0) / limit),
+      },
+    };
   }
 
   async count() {

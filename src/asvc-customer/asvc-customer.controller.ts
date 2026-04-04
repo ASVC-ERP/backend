@@ -13,36 +13,18 @@ export class CustomerController {
   }
 
   @Get()
-  async read() {
-    return this.service.read();
+  async get_by_page(
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(30), ParseIntPipe) limit: number,
+    @Query('search') search?: string,
+  ) {
+    return this.service.read_all( page, limit, search );
   }
 
   @Get('count')
   async count() {
     return this.service.count();
-  }  
-
-  @Get('search')
-  async search(
-    @Query('q') q: string,
-    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
-  ) {
-    console.log("Search Query: ", q);
-    return this.service.search(q, limit);
   }
-
-/*
-  @Get()
-  async get_by_page(
-    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-    @Query('limit', new DefaultValuePipe(30), ParseIntPipe) limit: number,
-    @Query('filter') filter?: string,
-    @Query('sortBy') sortBy?: string,
-    @Query('sortDir') sortDir: 'asc' | 'desc' = 'desc',
-  ) {
-    return this.service.read_all( page, limit, filter, sortBy, sortDir );
-  }
-*/
 
   @Get(':id')
   async read_one(@Param('id') id: number) {

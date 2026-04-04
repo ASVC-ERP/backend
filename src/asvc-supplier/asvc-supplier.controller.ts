@@ -25,8 +25,16 @@ export class SupplierController {
   }
 
   @Get()
-  read() {
-    return this.service.read();
+  async find_by_page(
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(100), ParseIntPipe) limit: number,
+    @Query('search') search?: string,
+  ) {
+    return this.service.find_by_page(
+      page,
+      limit,
+      search?.trim() || undefined,
+    );
   }
 
   @Get('count')

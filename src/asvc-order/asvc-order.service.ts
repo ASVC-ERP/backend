@@ -82,6 +82,7 @@ export class OrderService {
     page = 1,
     limit = 30,
     search?: string,
+    status?: string,
   ) {
     limit = Math.min(limit, 100);
     const from = (page - 1) * limit;
@@ -111,6 +112,10 @@ export class OrderService {
     if (search && search.trim()) {
       const sanitized = search.replace(/'/g, "''"); // escape single quotes
       query = query.ilike('customer.name', `%${sanitized}%`);
+    }
+
+    if (status && status.trim()) {
+      query = query.eq('status', status);
     }
   
     const { data, error, count } = await query.range(from, to);

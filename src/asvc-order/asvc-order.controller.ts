@@ -80,8 +80,9 @@ export class OrderController {
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(30), ParseIntPipe) limit: number,
     @Query('search') search?: string,
+    @Query('status') status?: string
   ) {
-    return this.service.get_by_page( page, limit, search );
+    return this.service.get_by_page( page, limit, search, status );
   }
 
   @Get('latest')
