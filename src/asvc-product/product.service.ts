@@ -41,7 +41,10 @@ export class ProductService {
       .order('id', { ascending: false });
 
     if (search) {
-      query = query.or(`item_name.ilike.%${search}%,item_code.ilike.%${search}%`);
+      const s = search.trim();
+      query = query.or(
+        `item_name.ilike.%${s}%,item_code.ilike.%${s}%,brand.ilike.%${s}%,model.ilike.%${s}%,origin.ilike.%${s}%`
+      );
     }
 
     const { data, error, count } = await query.range(from, to);

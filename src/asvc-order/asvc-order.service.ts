@@ -90,28 +90,21 @@ export class OrderService {
   
     let query = this.supabase.client
       .from(this.table)
-      .select(
-        `
+      .select(`
         *,
-        customer:customers!sales_orders_cid_fkey!inner (
-          id,
-          name,
-          address
-        ),
-        user:users!sales_orders_sales_agent_fkey!inner (
-          id,
-          name,
-          role
-        )
-        `,
-        { count: 'exact' }
-      )
+        customer:customers!sales_orders_cid_fkey!inner ( id, name, address),
+        user:users!sales_orders_sales_agent_fkey!inner ( id, name, role )
+        `, { count: 'exact' })
       .order("id", { ascending: false });
   
-    // 🔹 Add search condition if present
     if (search && search.trim()) {
-      const sanitized = search.replace(/'/g, "''"); // escape single quotes
-      query = query.ilike('customer.name', `%${sanitized}%`);
+      const sanitized = search.replace(/'/g, "''");
+      const isNumeric = !isNaN(Number(search));
+      if (isNumeric) {
+        query = query.or( `id.eq.${Number(search)}` );
+      } else {
+        query = query.ilike('customer.name', `%${sanitized}%`);
+      }
     }
 
     if (status && status.trim()) {
