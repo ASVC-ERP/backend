@@ -15,7 +15,7 @@ export class CustomerController {
   @Get()
   async get_by_page(
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-    @Query('limit', new DefaultValuePipe(30), ParseIntPipe) limit: number,
+    @Query('limit', new DefaultValuePipe(500), ParseIntPipe) limit: number,
     @Query('search') search?: string,
   ) {
     return this.service.read_all( page, limit, search );
