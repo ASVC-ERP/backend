@@ -12,6 +12,7 @@ import { InvoicesModule } from './asvc-invoice/invoices.module';
 import { AuthenticationModule } from './asvc-auth/asvc-auth.module';
 import { SupplierInvoiceModule } from './asvc-supplier-invoice/supplier-invoice.module';
 import { PrintModule } from './asvc-print/asvc-print.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { PrintModule } from './asvc-print/asvc-print.module';
     AuthenticationModule,
     SupplierInvoiceModule,
     PrintModule,
+    HealthModule,
   ]
 })
 export class AppModule {}
