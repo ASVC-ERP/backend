@@ -32,11 +32,18 @@ export class ProductController {
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(100), ParseIntPipe) limit: number,
     @Query('search') search?: string,
+    @Query('stock') stockStatus?: string
   ) {
+
+    let normalizedStock: 'in' | 'out' | undefined;
+    if (stockStatus === 'in' || stockStatus === 'out') { normalizedStock = stockStatus;} 
+    else { normalizedStock = undefined; /* handles "", undefined, invalid */ }
+
     return this.service.find_by_page(
       page,
       limit,
       search?.trim() || undefined,
+      normalizedStock,
     );
   }
 

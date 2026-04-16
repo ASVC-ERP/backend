@@ -28,6 +28,7 @@ export class ProductService {
     page = 1, 
     limit = 100,
     search?: string,
+    stockStatus?: 'in' | 'out'
   ) {
     limit = Math.min(limit, 1000);
     const from = (page - 1) * limit;
@@ -38,6 +39,7 @@ export class ProductService {
     let query = this.supabase.client
       .from('products')
       .select('*', { count: 'exact' })
+      .order('stock', { ascending: false })
       .order('id', { ascending: false });
 
     if (search) {
@@ -45,6 +47,12 @@ export class ProductService {
       query = query.or(
         `item_name.ilike.%${s}%,item_code.ilike.%${s}%,brand.ilike.%${s}%,model.ilike.%${s}%,origin.ilike.%${s}%`
       );
+    }
+
+    if (stockStatus === 'in') {
+      query = query.gte('stock', 1);
+    } else if (stockStatus === 'out') {
+      query = query.eq('stock', 0);
     }
 
     const { data, error, count } = await query.range(from, to);
