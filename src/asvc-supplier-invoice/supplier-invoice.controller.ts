@@ -2,6 +2,7 @@ import { Controller, Get, Post, Put, Patch, Delete, Param, Body, Query, DefaultV
 import { SupplierInvoiceService } from './supplier-invoice.service';
 import { CreateSupplierInvoiceDto } from './dto/create-invoice.dto';
 import { UpdateSupplierInvoiceDto } from './dto/update-invoice.dto';
+import { ReturnDto } from './dto/return-item.dto';
 
 @Controller('supplier-invoice')
 export class SupplierInvoiceController {
@@ -10,6 +11,22 @@ export class SupplierInvoiceController {
   @Post()
   create(@Body() dto: CreateSupplierInvoiceDto) {
     return this.service.create(dto);
+  }
+
+  @Post('return/:id')
+  return_items(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: ReturnDto
+  ) {
+    return this.service.return_items(id, dto);
+  }
+
+  @Post('rpc-return/:id')
+  rpc_return_items(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: ReturnDto
+  ) {
+    return this.service.rpc_return_items(id, dto);
   }
 
   @Patch(':id/post')
@@ -45,6 +62,14 @@ export class SupplierInvoiceController {
   @Get('costs/:productId')
   getCosts(@Param('productId', ParseIntPipe) productId: number) {
     return this.service.get_costs(productId);
+  }
+
+  @Get('return')
+  getallReturns(
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(50), ParseIntPipe) limit: number,
+  ) {
+    return this.service.get_all_returns();
   }
 
   @Put(':id')
