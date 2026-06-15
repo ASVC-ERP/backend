@@ -13,7 +13,10 @@ import { ReturnDto } from './dto/return-item.dto';
 export class SupplierInvoiceService {
   constructor(private readonly supabase: SupabaseService) {}
 
-  private readonly table = 'supplier_invoices'
+  private readonly table = 'supplier_invoices';
+  private readonly tableItems = 'supplier_invoice_items';
+  private readonly returnTable = 'supplier_return';
+  private readonly returnTableItems = 'supplier_return_items';
 
   /* ================= CREATE ================= */
   async create(dto: CreateSupplierInvoiceDto) {
@@ -25,6 +28,8 @@ export class SupplierInvoiceService {
         items,
       },
     );
+
+    console.log(error);
 
     if (error) throw new BadRequestException("Failed to create invoice");
     return data;
@@ -200,92 +205,121 @@ export class SupplierInvoiceService {
   async return_items(id: number, dto: ReturnDto) {
     const supabase = this.supabase.client;
 
-    // Create Header
-    const { data: returnHeader, error: returnError } =
-      await supabase
-        .from('supplier_return')
-        .insert({ invoice_id: id, })
-        .select()
-        .single();
+    // =====================================================
+    // 1. Create supplier_return Header
+    // =====================================================
+    const { data: returnHeader, error: returnError } = await supabase
+      .from(this.returnTable)
+      .insert({ 
+        invoice_id: id,
+        reason: dto.reason, 
+      })
+      .select()
+      .single();
+    if (returnError) throw new BadRequestException(returnError.message);
 
-    if (returnError) { throw new BadRequestException(returnError.message); }
-
-    // Append returned items
-    const invoiceItemIds = dto.items.map(i => i.item_id);
-
+    // =====================================================
+    // 2. Get supplier_invoice_items being returned
+    // =====================================================
+    const invoiceItemIds = dto.items.map(item => item.item_id);
     const { data: invoiceItems, error: invError } = await supabase
-      .from('supplier_invoice_items')
-      .select('id, product_id, quantity')
+      .from(this.tableItems)
+      .select(`
+        id,
+        product_id,
+        quantity,
+        ret_qty
+      `)
       .in('id', invoiceItemIds);
+    if (invError) throw new BadRequestException(invError.message);
 
-    if (invError) { throw new BadRequestException(invError.message); }
-
-    const { data: previousReturns } = await supabase
-      .from('supplier_return_items')
-      .select('item_id, ret_qty')
-      .in('item_id', invoiceItemIds);
-
-    const returnedMap = new Map<number, number>();
-
-    for (const r of previousReturns || []) {
-      returnedMap.set(
-        r.item_id,
-        (returnedMap.get(r.item_id) || 0) + Number(r.ret_qty),
-      );
-    }
-
+    // =====================================================
+    // 3. Validate return quantities
+    //
+    // Example:
+    // Purchased = 100
+    // Already Returned = 30
+    // New Return = 20
+    // Total Return = 50 (VALID)
+    //
+    // Purchased = 100
+    // Already Returned = 90
+    // New Return = 20
+    // Total Return = 110 (INVALID)
+    // =====================================================
     for (const item of dto.items) {
-      const invoiceItem = invoiceItems.find( (i) => i.id === item.item_id, );
-      if (!invoiceItem) { throw new BadRequestException( `Invoice item ${item.item_id} not found`, ); }
-      const alreadyReturned = returnedMap.get(item.item_id) || 0;
-      const totalAfter = alreadyReturned + item.ret_qty;
+      const invoiceItem = invoiceItems.find( i => i.id === item.item_id, );
+      if (!invoiceItem) throw new BadRequestException( `Invoice item ${item.item_id} not found`, );
 
-      console.log(alreadyReturned, totalAfter);
-
-      if (totalAfter > invoiceItem.quantity) {
-        throw new BadRequestException(
-          `Exceeds allowed return. Purchased: ${invoiceItem.quantity}, Already returned: ${alreadyReturned}, Trying: ${item.ret_qty}`,
-        );
-      }
+      const alreadyReturned = Number(invoiceItem.ret_qty);
+      const requestedReturn = Number(item.qty);
+      const totalAfterReturn = alreadyReturned + requestedReturn;
+      if (totalAfterReturn > invoiceItem.quantity) throw new BadRequestException(`Exceeds allowed return. Purchased: ${invoiceItem.quantity}, Already Returned: ${alreadyReturned}, Trying To Return: ${requestedReturn}`,);
     }
 
-    const items = dto.items.map((item) => ({
+    // =====================================================
+    // 4. Create supplier_return_items Detail Records
+    // =====================================================
+    const returnItemsPayload = dto.items.map(item => ({
       return_id: returnHeader.id,
       item_id: item.item_id,
-      ret_qty: item.ret_qty,
+      qty: item.qty,
     }));
 
-    const { data: returnItems, error: itemError } =
-      await supabase
-        .from('supplier_return_items')
-        .insert(items)
-        .select();
+    const { data: returnItems, error: itemError } = await supabase
+      .from('supplier_return_items')
+      .insert(returnItemsPayload)
+      .select();
 
-    if (itemError) { throw new BadRequestException(itemError.message); }
+    if (itemError) throw new BadRequestException(itemError.message);
 
-    // Update Stock
+    // =====================================================
+    // 5. Update Inventory Stock
+    // 6. Update supplier_invoice_items.ret_qty
+    // =====================================================
     for (const item of dto.items) {
-      const invoiceItem = invoiceItems.find( (i) => i.id === item.item_id, );
+      const invoiceItem = invoiceItems.find( i => i.id === item.item_id, );
+      if (!invoiceItem) continue;
 
-      if (!invoiceItem) { throw new BadRequestException( `Invoice item ${item.item_id} not found`, ); }
-
+      // -------------------------------------
+      // Get Current Product Stock
+      // -------------------------------------
       const { data: product, error: productError } = await supabase
         .from('products')
         .select('stock')
         .eq('id', invoiceItem.product_id)
         .single();
+      if (productError) throw new BadRequestException(productError.message);
 
-      if (productError) { throw new BadRequestException(productError.message); }
-
-      const newStock = product.stock - item.ret_qty;
-      const { error: updateError } = await supabase
+      // -------------------------------------
+      // Reduce Inventory Stock
+      // -------------------------------------
+      const newStock = Number(product.stock) - Number(item.qty);
+      const { error: stockUpdateError } = await supabase
         .from('products')
-        .update({ stock: newStock })
+        .update({ stock: newStock, })
         .eq('id', invoiceItem.product_id);
+      if (stockUpdateError) throw new BadRequestException( stockUpdateError.message, );
 
-      if (updateError) { throw new BadRequestException(updateError.message); }
+      // -------------------------------------
+      // Update Returned Quantity
+      //
+      // Example:
+      // Current ret_qty = 10
+      // Returning = 5
+      // New ret_qty = 15
+      // -------------------------------------
+      const newReturnedQty = Number(invoiceItem.ret_qty) + Number(item.qty);
+      const { error: returnQtyError } = await supabase
+        .from('supplier_invoice_items')
+        .update({ ret_qty: newReturnedQty, })
+        .eq('id', item.item_id);
+      if (returnQtyError) throw new BadRequestException( returnQtyError.message, );
     }
 
+    // =====================================================
+    // Return Response
+    // =====================================================
     return {
       return: returnHeader,
       items: returnItems,
@@ -296,6 +330,7 @@ export class SupplierInvoiceService {
     const supabase = this.supabase.client;
     const { data, error } = await supabase.rpc('create_supplier_return', {
       p_invoice_id: id,
+      p_reason: dto.reason,
       p_items: dto.items,
     });
 

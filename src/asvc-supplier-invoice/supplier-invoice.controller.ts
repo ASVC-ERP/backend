@@ -10,6 +10,7 @@ export class SupplierInvoiceController {
 
   @Post()
   create(@Body() dto: CreateSupplierInvoiceDto) {
+    console.log(dto);
     return this.service.create(dto);
   }
 

@@ -6,7 +6,7 @@ export class ReturnItemDto {
     item_id: number;
 
     @IsNumber()
-    ret_qty: number;
+    qty: number;
 }
 
 export class ReturnDto {
