@@ -3,6 +3,7 @@ import { SupplierInvoiceService } from './supplier-invoice.service';
 import { CreateSupplierInvoiceDto } from './dto/create-invoice.dto';
 import { UpdateSupplierInvoiceDto } from './dto/update-invoice.dto';
 import { ReturnDto } from './dto/return-item.dto';
+import { ReturnSupplierInvoiceDto } from './dto/create-return.dto';
 
 @Controller('supplier-invoice')
 export class SupplierInvoiceController {
@@ -14,42 +15,28 @@ export class SupplierInvoiceController {
     return this.service.create(dto);
   }
 
-  @Post('return/:id')
-  return_items(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: ReturnDto
-  ) {
-    return this.service.return_items(id, dto);
-  }
-
-  @Post('rpc-return/:id')
-  rpc_return_items(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: ReturnDto
-  ) {
-    return this.service.rpc_return_items(id, dto);
+  @Post(':id/return')
+  returnItems( @Param('id') id: string, @Body() dto: ReturnSupplierInvoiceDto,) { 
+    return this.service.returnItems(Number(id), dto); 
   }
 
   @Patch(':id/post')
   post_invoice(@Param('id', ParseIntPipe) id: number) {
     return this.service.post_invoice(id);
   }
-/*
-  @Get()
-  findAll() {
-    return this.service.findAll();
-  }
-*/
+
   @Get()
   async find_by_page(
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-    @Query('limit', new DefaultValuePipe(30), ParseIntPipe) limit: number,
-    @Query('supplier') supplier: number
+    @Query('limit', new DefaultValuePipe(50), ParseIntPipe) limit: number,
+    @Query('supplier') supplier: number,
+    @Query('name') name: string
   ) {
     return this.service.find_by_page(
       page,
       limit,
-      supplier
+      supplier,
+      name
     );
   }
 
@@ -69,8 +56,9 @@ export class SupplierInvoiceController {
   getallReturns(
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(50), ParseIntPipe) limit: number,
+    @Query('name') name: string
   ) {
-    return this.service.get_all_returns();
+    return this.service.get_all_returns(page, limit, name);
   }
 
   @Put(':id')
