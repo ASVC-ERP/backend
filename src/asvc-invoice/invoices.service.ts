@@ -1,12 +1,28 @@
 import { Injectable, BadRequestException, NotFoundException, InternalServerErrorException, } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { UpdateSalesInvoiceDto } from './dto/update-invoice.dto';
+import { CreateSalesReturnDto } from './dto/invoice-item-return.dto';
 
 @Injectable()
 export class InvoicesService {
   constructor(private readonly supabase: SupabaseService) {}
 
   private readonly table = 'sales_invoices';
+
+  async return(dto: CreateSalesReturnDto) {
+    if (!dto.items || dto.items.length === 0) 
+      throw new BadRequestException('Return items are required');
+
+    const { data, error } = await this.supabase.client.rpc('create_sales_return', {
+      p_invoice_id: dto.invoice_id,
+      p_reason: dto.reason ?? null,
+      p_items: dto.items,
+    });
+
+    if (error) 
+      throw new BadRequestException(error.message || 'Failed to create sales return');
+    return data;
+  }
 
   async get_by_page( page = 1, limit = 100, search?: string,) {
     limit = Math.min(limit, 500);

@@ -1,10 +1,16 @@
 import { Controller, Post, Get, Delete, Patch,  Body, Param, Query, ParseIntPipe, DefaultValuePipe } from '@nestjs/common';
 import { InvoicesService } from './invoices.service';
 import { UpdateSalesInvoiceDto } from './dto/update-invoice.dto';
+import { CreateSalesReturnDto } from './dto/invoice-item-return.dto';
 
 @Controller('invoice')
 export class InvoicesController {
   constructor(private readonly service: InvoicesService) {}
+
+  @Post()
+  return(@Body() dto: CreateSalesReturnDto) {
+    return this.service.return(dto);
+  }
 
   @Get()
   async get_by_page(
