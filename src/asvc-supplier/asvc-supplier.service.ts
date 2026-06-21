@@ -100,6 +100,18 @@ export class SupplierService {
     return data;
   }
 
+  async checkSid(sid: string) {
+    const supplier = await this.supabase.client
+      .from('suppliers')
+      .select('id')
+      .eq('sid', sid)
+      .maybeSingle();
+
+    return {
+      exists: !!supplier.data,
+    };
+  }
+
   async update(id: string, dto: UpdateSupplierDto) {
     const { data, error } = await this.supabase.client
       .from(this.table)

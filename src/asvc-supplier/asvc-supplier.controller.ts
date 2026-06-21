@@ -56,6 +56,11 @@ export class SupplierController {
     return this.service.read_one(id);
   }
 
+  @Get('check-sid/:sid')
+  async checkSid(@Param('sid') sid: string) {
+    return this.service.checkSid(sid);
+  }
+
   @Put(':id')
   update(
     @Param('id') id: string,
