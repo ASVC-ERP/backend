@@ -61,6 +61,11 @@ export class ProductController {
     return this.service.search(q, limit);
   }
 
+  @Get("check-code/:itemCode")
+  async checkItemCode(@Param("itemCode") itemCode: string) {
+    return this.service.checkItemCode(itemCode);
+  }
+
   @Get(':id/stock-adjustments')
   async listAdjustments(@Param('id') id: number) {
     return this.service.listAdjustments(id);

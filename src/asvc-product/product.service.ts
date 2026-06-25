@@ -120,6 +120,24 @@ export class ProductService {
     return data;
   }
 
+  async checkItemCode(itemCode: string) {
+    const code = itemCode.trim();
+  
+    const { data, error } = await this.supabase.client
+      .from("products")
+      .select("id")
+      .ilike("item_code", code)
+      .maybeSingle();
+  
+    if (error) {
+      throw new Error(error.message);
+    }
+  
+    return {
+      exists: !!data,
+    };
+  }
+
   // UPDATE
   async update(id: number, dto: UpdateProductDto) {
     const { data, error } = await this.supabase.client

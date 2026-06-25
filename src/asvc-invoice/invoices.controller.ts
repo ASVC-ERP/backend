@@ -35,6 +35,15 @@ export class InvoicesController {
     return this.service.search(q, limit);
   }
 
+  @Get('return')
+  async getReturnAll(
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(100), ParseIntPipe) limit: number,
+    @Query('search') search?: string,
+  ) {
+    return this.service.getReturnAll( page, limit, search );
+  }
+
   @Get(':id')
   find(
     @Param('id') id: number

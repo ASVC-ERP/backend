@@ -112,13 +112,16 @@ export class InvoicesService {
         invoice_number,
         order_id,
         sales_invoice_items (
+          id,
           quantity,
           price,
           products (
             id,
+            item_code,
             item_name,
             unit
-          )
+          ),
+          return_qty
         ),
         customers (
           id,
@@ -137,6 +140,7 @@ export class InvoicesService {
     return {
       id: data.id,
       customer: data.customers,
+      order_id: data.order_id,
       invoice_date: data.invoice_date,
       total_price: data.total_price,
       items: data.sales_invoice_items,
@@ -144,6 +148,65 @@ export class InvoicesService {
       waybill_number: data.waybill_number,
       courier: data.courier,
       shipping_date: data.shipping_date,
+    };
+  }
+
+  async getReturnAll(
+    page = 1,
+    limit = 100,
+    search?: string,
+  ) {
+    limit = Math.min(limit, 500);
+  
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
+  
+    let query = this.supabase.client
+      .from('sales_returns')
+      .select(`*,
+        sales_invoices!inner (
+          id,
+          order_id,
+          users!inner(
+            id,
+            username,
+            name
+          ),
+          waybill_number,
+          courier,
+          invoice_date,
+          invoice_number,
+          customers!inner ( id, name )
+        ),
+        sales_return_items (
+          id,
+          return_id,
+          invoice_item_id,
+          return_qty,
+          remaining_qty,
+          products ( id, item_code, item_name, unit )
+        ) 
+      `, { count: "exact" })
+      .order("id", { ascending: false });
+  
+    if (search?.trim()) {
+      query = query.ilike("sales_invoices.customers.name", `%${search}%`);
+    }
+  
+    const { data, error, count } = await query.range(from, to);
+  
+    if (error) {
+      throw new InternalServerErrorException(error.message);
+    }
+  
+    return {
+      data,
+      meta: {
+        page,
+        limit,
+        total: count ?? 0,
+        totalPages: Math.ceil((count ?? 0) / limit),
+      },
     };
   }
 
