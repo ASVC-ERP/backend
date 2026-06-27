@@ -41,6 +41,17 @@ export class UsersService {
     return data;
   }
 
+  async read_username(username: string) {
+    const { data, error } = await this.service.client
+      .from(this.table)
+      .select('*')
+      .eq('username', username)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!data) return null;
+    return data;
+  }
+
   async update(id: number, dto: UpdateUserDto) {
     if (dto.password) {
       dto.password = await bcrypt.hash(dto.password, 10);

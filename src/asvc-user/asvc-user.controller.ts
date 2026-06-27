@@ -17,6 +17,11 @@ export class UsersController {
     return this.usersService.read();
   }
 
+  @Get('username/:username')
+  async getUsername(@Param('username') username: string) {
+    return this.usersService.read_username(username);
+  }
+
   @Get(':id')
   async read_one(@Param('id') id: string) {
     return this.usersService.read_one(Number(id));
