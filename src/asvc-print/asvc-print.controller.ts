@@ -154,7 +154,7 @@ import {
       doc.text(`Address: ${data.customerAddress}`, 50, 135 - y_offset, {
         width: 370,
       });
-      doc.text(`TIN: ${data.customerTIN}`, 440, 135 - y_offset );
+      doc.text(`Order: ORD${String(data.orderId).padStart(4, "0")}`, 440, 135 - y_offset );
   
       // ===== TABLE =====
       const tableTop = 180 - y_offset;
@@ -398,6 +398,10 @@ import {
       .filter(item => (item.quantity || 0) > 0)       //safety measure for items with 0 qty on delivery receipt
       .forEach(item => {
           const amount = item.quantity * item.price;
+
+          const descHeight = doc.heightOfString(item.itemName, {
+            width: 220,
+          });
       
           doc.text(item.quantity.toString(), colX.qty, y);
           doc.text(item.unit, colX.unit, y);
@@ -405,7 +409,7 @@ import {
           doc.text(item.price.toFixed(2), colX.price, y);
           doc.text(amount.toFixed(2), colX.amount, y);
       
-          y += 25;
+          y += Math.max(descHeight, 20) + 3;
       });
       
       // ===== TOTAL ONLY (NO VAT) =====

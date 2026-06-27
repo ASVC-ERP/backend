@@ -42,7 +42,9 @@ export class CustomerService {
       .order('id', { ascending: false });
 
     if (search) {
-      query = query.ilike('name', `%${search}%`);
+      const s = search.trim();
+      //query = query.ilike('name', `%${search}%`);
+      query = query.or(`name.ilike.%${s}%,city.ilike.%${s}%` );
     }
 
     const { data, error, count } = await query.range(from, to);

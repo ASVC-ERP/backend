@@ -51,6 +51,7 @@ export class PrintService {
       .select(`
         id,
         invoice_date,
+        order_id,
         customers (
           name,
           address,
@@ -73,9 +74,11 @@ export class PrintService {
 
     const pl = data as PackingListType;
     const udata = data as any;
+    console.log("oid: ",pl.order_id)
 
     return {
       date: pl.invoice_date,
+      orderId: pl.order_id,
       customerName: udata.customers?.name ?? '',
       customerAddress: udata.customers?.address ?? '',
       customerTIN: udata.customers?.tin ?? '',
