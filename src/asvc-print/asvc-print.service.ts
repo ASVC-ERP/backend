@@ -3,6 +3,7 @@ import { SupabaseService } from '../supabase/supabase.service';
 import { SalesOrderType } from './type/so.type';
 import { PackingListType } from './type/pl.type';
 import { DeliveryReceiptType } from './type/dr.type';
+import { PurchaseOrderType } from './type/po.type';
 
 @Injectable()
 export class PrintService {
@@ -140,6 +141,52 @@ export class PrintService {
         unit: item.products?.unit ?? '',
         itemName: item.products?.item_name ?? '',
         price: item.price,
+      })),
+    };
+  }
+
+  async read_po(id: number) {
+    const { data, error } = await this.service.client
+      .from('supplier_invoices')
+      .select(`
+        id,
+        invoice_number,
+        po_number,
+        purchase_date,
+        suppliers (
+          name,
+          address
+        ),
+        supplier_invoice_items (
+          quantity,
+          unit_cost,
+          products (
+            item_name,
+            unit
+          )
+        )
+      `)
+      .eq('id', id)
+      .single();
+
+    if (error) throw error;
+
+    const row = data as PurchaseOrderType;
+
+    const urow = data as any;
+    const supplier = urow.suppliers;
+
+    return {
+      invoice_number: row.invoice_number ?? '',
+      date: row.purchase_date,
+      po_number: row.po_number,
+      supplierName: supplier?.name ?? '',
+      supplierAddress: supplier?.address ?? '',
+      items: row.supplier_invoice_items.map(item => ({
+        quantity: item.quantity,
+        price: item.unit_cost,
+        unit: item.products?.unit ?? '',
+        itemName: item.products?.item_name ?? '',
       })),
     };
   }

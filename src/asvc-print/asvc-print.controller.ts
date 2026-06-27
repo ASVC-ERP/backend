@@ -66,6 +66,18 @@ import {
         this.generate_dr_b(data, res);
     }
 
+    // PURCHASE ORDER
+    // API: /api/print/purchase-order/:id
+    // ===========================================================================
+    @Get('purchase-order/:id')
+    async print_po(
+        @Param('id') id: number,
+        @Res() res: Response,
+    ) {
+        const data = await this.service.read_po(+id);
+        this.generate_po(data, res);
+    }
+
 // ===========================================================================
 // PDF Generator Functions
 // ===========================================================================
@@ -212,6 +224,202 @@ import {
           y += dynamic_height;
         });
   
+      doc.end();
+    }
+
+    private generate_po1(data: any, res: Response) {
+      const doc = new PDFDocument({ margin: 40 });
+      
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader(
+          'Content-Disposition',
+          'inline; filename="delivery-receipt-b.pdf"',
+      );
+      
+      doc.pipe(res);
+      
+      doc.font('Helvetica-Bold');
+      doc.fontSize(12).text('Purchase Order', 0, 90, {
+          underline: true,
+          align: 'center',
+      });
+
+      const yStart = 120;
+      doc.font('Helvetica');
+      doc.fontSize(10)
+          .text(`PO No: ${data.po_number}`, 400, yStart)
+          .text(`Date: ${data.date}`, 400, yStart + 15);
+      
+      doc.text(`Supplier: ${data.supplierName}`, 50, yStart);
+      doc.text(`Address: ${data.supplierAddress}`, 50, yStart + 15, {
+          width: 300,
+      });
+      
+      // ===== TABLE =====
+      const tableTop = 200;
+      const colX = { qty: 50, unit: 75, desc: 110, price: 350, amount: 480 };
+      
+      doc.font('Helvetica-Bold');
+      ['Qty', 'Unit', 'Description', 'Cost', 'Amount'].forEach((h, i) => {
+          doc.text(h, Object.values(colX)[i], tableTop);
+      });
+      
+      doc.moveTo(50, tableTop + 15).lineTo(550, tableTop + 15).stroke();
+      
+      doc.font('Helvetica');
+      let y = tableTop + 25;
+      
+      data.items
+      .filter(item => (item.quantity || 0) > 0)       //safety measure for items with 0 qty on delivery receipt
+      .forEach(item => {
+          const amount = item.quantity * item.price;
+
+          const descHeight = doc.heightOfString(item.itemName, {
+            width: 220,
+          });
+      
+          doc.text(item.quantity.toString(), colX.qty, y);
+          doc.text(item.unit, colX.unit, y);
+          doc.text(item.itemName, colX.desc, y, { width: 220 });
+          doc.text(item.price.toFixed(2), colX.price, y);
+          doc.text(amount.toFixed(2), colX.amount, y);
+      
+          y += Math.max(descHeight, 20) + 3;
+      });
+      
+      // ===== TOTAL ONLY (NO VAT) =====
+      const { netTotal } = this.computeTotals(data.items);
+      
+      y += 20;
+      doc.font('Helvetica-Bold').text('Total Amount Due:', colX.price, y);
+      doc.text(netTotal.toFixed(2), colX.amount, y);
+      
+      y += 50;
+      doc.fontSize(8).text(
+          'Received the above goods in good order and condition.',
+          colX.price,
+          y,
+      );
+      
+      doc.text('By: ___________________________', colX.price, y + 20);
+      doc.text('        Signature Over Printed Name', colX.price, y + 30);
+      doc.text('Date: ________________________', colX.price, y + 50);
+      
+      doc.end();
+
+    } 
+
+    private generate_po(data: any, res: Response) {
+      const doc = new PDFDocument({ margin: 40 });
+    
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        'inline; filename="purchase-order.pdf"',
+      );
+    
+      doc.pipe(res);
+    
+      // ===== TITLE =====
+      doc.font("Helvetica-Bold");
+      doc.fontSize(12).text("Purchase Order", 0, 90, {
+        underline: true,
+        align: "center",
+      });
+    
+      // ===== HEADER =====
+      const yStart = 120;
+    
+      doc.font("Helvetica");
+      doc.fontSize(10)
+        .text(`PO No: ${data.po_number}`, 400, yStart)
+        .text(`Date: ${data.date}`, 400, yStart + 15);
+    
+      doc.text(`Supplier: ${data.supplierName}`, 50, yStart);
+    
+      doc.text(`Address: ${data.supplierAddress}`, 50, yStart + 15, {
+        width: 300,
+      });
+    
+      // ===== TABLE =====
+      const tableTop = 200;
+      const pageBottom = doc.page.height - 80;
+    
+      const colX = {
+        qty: 50,
+        unit: 80,
+        desc: 120,
+        price: 360,
+        amount: 470,
+      };
+    
+      const drawTableHeader = (y: number) => {
+        doc.font("Helvetica-Bold");
+    
+        doc.text("Qty", colX.qty, y);
+        doc.text("Unit", colX.unit, y);
+        doc.text("Description", colX.desc, y);
+        doc.text("Cost", colX.price, y);
+        doc.text("Amount", colX.amount, y);
+    
+        doc.moveTo(50, y + 15).lineTo(550, y + 15).stroke();
+    
+        doc.font("Helvetica");
+    
+        return y + 25;
+      };
+    
+      let y = drawTableHeader(tableTop);
+    
+      data.items
+        .filter((item) => (item.quantity || 0) > 0)
+        .forEach((item) => {
+          const price = Number(item.unit_cost ?? item.price ?? 0);
+          const amount = item.quantity * price;
+    
+          const descHeight = doc.heightOfString(item.itemName, {
+            width: 220,
+          });
+    
+          const rowHeight = Math.max(descHeight, 20) + 5;
+    
+          // Start a new page if this row won't fit
+          if (y + rowHeight > pageBottom) {
+            doc.addPage();
+            y = drawTableHeader(60);
+          }
+    
+          doc.text(item.quantity.toString(), colX.qty, y);
+    
+          doc.text(item.unit ?? "", colX.unit, y);
+    
+          doc.text(item.itemName ?? "", colX.desc, y, {
+            width: 220,
+          });
+    
+          doc.text(price.toFixed(2), colX.price, y);
+    
+          doc.text(amount.toFixed(2), colX.amount, y);
+    
+          y += rowHeight;
+        });
+    
+      // ===== TOTAL =====
+      const { netTotal } = this.computeTotals(data.items);
+    
+      // Ensure totals/signature fit on current page
+      if (y + 140 > pageBottom) {
+        doc.addPage();
+        y = 60;
+      }
+    
+      y += 20;
+    
+      doc.font("Helvetica-Bold");
+    
+      doc.text("Total Amount Due:", colX.price, y);
+    
+      doc.text(netTotal.toFixed(2), colX.amount, y);
       doc.end();
     }
 
