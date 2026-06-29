@@ -210,6 +210,71 @@ export class SupplierInvoiceService {
     return { updated: true };
   }
 
+  async update2(id: number, dto: UpdateSupplierInvoiceDto) {
+    // 1. Check invoice first
+    const { data: invoice, error: findError } = await this.supabase.client
+      .from('supplier_invoices')
+      .select('id, status')
+      .eq('id', id)
+      .single();
+
+    console.log(1111)
+  
+    if (findError || !invoice) {
+      throw new NotFoundException('Supplier invoice not found');
+    }
+
+    if (invoice.status === 'Posted') {
+      throw new BadRequestException('Cannot edit Posted invoice');
+    }
+
+    // 2. Update header
+    const { error: updateError } = await this.supabase.client
+      .from('supplier_invoices')
+      .update({
+        invoice_number: dto.invoice_number,
+        po_number: dto.po_number,
+        purchase_date: dto.purchase_date,
+        supplier_id: dto.supplier_id,
+        conversion_factor: dto.conversion_factor,
+        notes: dto.notes,
+      })
+      .eq('id', id);
+
+    if (updateError) {
+      throw new InternalServerErrorException(updateError.message);
+    }
+
+    // 3. Delete old items
+    const { error: deleteError } = await this.supabase.client
+      .from('supplier_invoice_items')
+      .delete()
+      .eq('invoice_id', id);
+  
+    if (deleteError) {
+      throw new InternalServerErrorException(deleteError.message);
+    }
+
+    // 4. Insert updated items
+    const items = dto.items.map((item) => ({
+      invoice_id: id,
+      product_id: item.product_id,
+      quantity: item.quantity,
+      unit_cost: item.unit_cost,
+      subtotal: item.quantity * item.unit_cost,
+    }));
+
+    const { error: insertError } = await this.supabase.client
+      .from('supplier_invoice_items')
+      .insert(items);
+
+    if (insertError) {
+      throw new InternalServerErrorException(insertError.message);
+    }
+
+    return { updated: true };
+  }
+
   /* ================= DELETE ================= */
   async remove(id: number) {
     await this.supabase.client
