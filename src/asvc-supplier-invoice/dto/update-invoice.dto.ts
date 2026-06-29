@@ -40,6 +40,10 @@ class UpdateSupplierInvoiceItemDto {
     @IsNumber()
     conversion_factor?: number;
 
+    @IsOptional()
+    @IsString()
+    notes?: string;
+
     @IsArray()
     @IsNotEmpty()
     @ValidateNested({ each: true })

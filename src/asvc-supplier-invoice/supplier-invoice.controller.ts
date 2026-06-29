@@ -61,12 +61,20 @@ export class SupplierInvoiceController {
     return this.service.get_all_returns(page, limit, name);
   }
 
-  @Put(':id')
+  @Put('v1/:id')
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateSupplierInvoiceDto,
   ) {
     return this.service.update(id, dto);
+  }
+
+  @Put('v2/:id')
+  update2(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateSupplierInvoiceDto,
+  ) {
+    return this.service.update2(id, dto);
   }
 
   @Delete(':id')

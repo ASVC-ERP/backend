@@ -27,6 +27,9 @@ export class CreateSupplierInvoiceDto {
 
     @IsNumber()
     conversion_factor?: number;
+
+    @IsString()
+    notes?: string;
   
     @IsArray()
     @ValidateNested({ each: true })
