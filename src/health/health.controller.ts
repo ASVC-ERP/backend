@@ -10,7 +10,6 @@ export class HealthController {
   @Get()
   check() {
     const health = this.healthService.check();
-    console.log("connection status: ", health.status);
     return health;
   }
 }

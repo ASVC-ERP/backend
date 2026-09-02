@@ -47,7 +47,6 @@ export class SupplierController {
     @Query('q') q: string,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
   ) {
-    console.log("Search Query: ", q);
     return this.service.search(q, limit);
   }
 
