@@ -20,23 +20,23 @@ function assertEnv() {
   if ((process.env.JWT_SECRET as string).length < 32) {
     throw new Error('JWT_SECRET must be at least 32 characters');
   }
-  // In production the frontend origin(s) must be pinned — a wide-open CORS
-  // policy plus credentialed cookies is a CSRF risk.
-  if (isProd && !process.env.CORS_ORIGIN) {
-    throw new Error('CORS_ORIGIN must be set when NODE_ENV=production');
-  }
 }
 
-// Comma-separated list of allowed frontend origins, e.g.
-// "https://ims.example.com,https://staging.ims.example.com". When unset (dev),
-// reflect the request origin so localhost:5173 etc. just work.
-function corsOrigin(): true | string[] {
+// CORS origin policy:
+//   CORS_ORIGIN set   -> allow exactly those comma-separated origins
+//   unset + dev       -> reflect any origin (localhost convenience)
+//   unset + prod      -> disable CORS entirely. Correct when the built frontend
+//                        is served from this app's ./public folder (same origin,
+//                        so no cross-origin requests to allow).
+function corsOrigin(): boolean | string[] {
   const raw = process.env.CORS_ORIGIN;
-  if (!raw) return true;
-  return raw
-    .split(',')
-    .map((o) => o.trim())
-    .filter(Boolean);
+  if (raw) {
+    return raw
+      .split(',')
+      .map((o) => o.trim())
+      .filter(Boolean);
+  }
+  return isProd ? false : true;
 }
 
 async function bootstrap() {
@@ -59,6 +59,6 @@ async function bootstrap() {
   console.log("=== DATABASE: ", db);
   console.log("=========================================================================")
 
-  await app.listen(3000, '0.0.0.0');
+  await app.listen(Number(process.env.PORT) || 3000, '0.0.0.0');
 }
 bootstrap();
