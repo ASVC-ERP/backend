@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, ConflictException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -10,15 +10,27 @@ export class UsersService {
 
   private table = 'users';
 
+  // Strip the password hash before a user object leaves the service.
+  private sanitize<T extends { password?: unknown }>(user: T | null) {
+    if (!user) return user;
+    const { password, ...safe } = user;
+    return safe;
+  }
+
   async create(dto: CreateUserDto) {
     const hashedPassword = await bcrypt.hash(dto.password, 10);
     const { data, error } = await this.service.client
       .from(this.table)
-      .insert([{ ...dto, password: hashedPassword }])
+      .insert([{ ...dto, role: dto.role ?? 'agent', password: hashedPassword }])
       .select();
 
-    if (error) throw new Error(error.message);
-    return data[0];
+    if (error) {
+      if (error.code === '23505') {
+        throw new ConflictException('Username already taken');
+      }
+      throw new Error(error.message);
+    }
+    return this.sanitize(data[0]);
   }
 
   async read() {
@@ -27,7 +39,7 @@ export class UsersService {
       .select('*');
 
     if (error) throw new Error(error.message);
-    return data;
+    return data.map((user) => this.sanitize(user));
   }
 
   async read_one(id: number) {
@@ -38,9 +50,10 @@ export class UsersService {
       .single();
 
     if (error) throw new Error(error.message);
-    return data;
+    return this.sanitize(data);
   }
 
+  // Internal-only: keeps the password hash so AuthService can bcrypt.compare.
   async read_username(username: string) {
     const { data, error } = await this.service.client
       .from(this.table)
@@ -62,8 +75,13 @@ export class UsersService {
       .eq('id', id)
       .select();
 
-    if (error) throw new Error(error.message);
-    return data[0];
+    if (error) {
+      if (error.code === '23505') {
+        throw new ConflictException('Username already taken');
+      }
+      throw new Error(error.message);
+    }
+    return this.sanitize(data[0]);
   }
 
   async delete(id: number) {
