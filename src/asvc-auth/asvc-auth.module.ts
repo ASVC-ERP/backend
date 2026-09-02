@@ -8,6 +8,7 @@ import { UsersService } from '../asvc-user/asvc-user.service';
 import { JwtStrategy } from './jwt.strategy';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { RolesGuard } from './roles.guard';
+import { RefreshTokenService } from './refresh-token.service';
 import { SupabaseModule } from '../supabase/supabase.module';
 
 @Module({
@@ -16,13 +17,14 @@ import { SupabaseModule } from '../supabase/supabase.module';
     PassportModule,
     JwtModule.register({
       secret: process.env.JWT_SECRET,
-      signOptions: { expiresIn: '1h' },
+      signOptions: { expiresIn: '15m' },
     }),
   ],
   providers: [
     AuthService,
     UsersService,
     JwtStrategy,
+    RefreshTokenService,
     // Global: every route requires a valid JWT unless marked @Public().
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     // Global: runs after JwtAuthGuard; enforces @Roles() when present.
