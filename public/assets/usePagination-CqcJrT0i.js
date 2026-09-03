@@ -1,0 +1,1 @@
+import{b as t}from"./router-DXZStn4s.js";const m=(s=1,e=100)=>{const[o,a]=t.useState(s),[i,n]=t.useState(e),[r,u]=t.useState(0);return{page:o,setPage:a,limit:i,setLimit:n,totalRows:r,setTotalRows:u}};export{m as u};
