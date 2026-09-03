@@ -211,22 +211,17 @@ export class ProductService {
     return data;
   }
 
-  async adjust_cost(id: number, dto: AdjustCostDto) {
-    const { cost } = dto;
-    const { data, error } = await this.supabase.client
-      .from('products')
-      .update({ 
-        cost: cost,
-        price1: Math.round(cost * 1.5), // cost + 50%
-        price2: Math.round(cost * 1.4), // cost + 40%
-        price3: Math.round(cost * 1.3) // cost + 30%
-      })
-      .eq('id', id)
-      .select()
-      .single();
-  
+  async adjust_cost(id: number, dto: AdjustCostDto, changedBy?: number) {
+    // adjust_product_cost updates cost + prices AND writes a product_cost_history
+    // row ('manual') in one transaction.
+    const { data, error } = await this.supabase.client.rpc('adjust_product_cost', {
+      p_id: id,
+      p_cost: dto.cost,
+      p_changed_by: changedBy ?? null,
+    });
+
     if (error || !data) throw new NotFoundException('Cannot adjust cost');
-    return data;
+    return Array.isArray(data) ? data[0] : data;
   }
 
   // DELETE

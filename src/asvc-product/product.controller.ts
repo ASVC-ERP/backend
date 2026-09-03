@@ -7,9 +7,10 @@ import {
   Post,
   Put,
   Patch,
-  Param, 
-  Delete, 
-  Query 
+  Param,
+  Delete,
+  Query,
+  Req
 } from '@nestjs/common';
 import { ProductService } from './product.service';
 import { CreateProductDto } from './dto/create-product.dto';
@@ -103,8 +104,9 @@ export class ProductController {
   adjust_cost(
     @Param('id') id: string,
     @Body() dto: AdjustCostDto,
+    @Req() req,
   ) {
-    return this.service.adjust_cost(+id, dto);
+    return this.service.adjust_cost(+id, dto, req.user?.userId);
   }
 
   @Delete(':id')
