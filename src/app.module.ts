@@ -13,6 +13,7 @@ import { InvoicesModule } from './asvc-invoice/invoices.module';
 import { AuthenticationModule } from './asvc-auth/asvc-auth.module';
 import { SupplierInvoiceModule } from './asvc-supplier-invoice/supplier-invoice.module';
 import { PrintModule } from './asvc-print/asvc-print.module';
+import { ReportsModule } from './asvc-report/reports.module';
 import { HealthModule } from './health/health.module';
 
 @Module({
@@ -35,6 +36,7 @@ import { HealthModule } from './health/health.module';
     AuthenticationModule,
     SupplierInvoiceModule,
     PrintModule,
+    ReportsModule,
     HealthModule,
   ]
 })
