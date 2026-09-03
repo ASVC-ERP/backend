@@ -53,7 +53,6 @@ export class OrderService {
   // ====================================================================================================================================
 
   async create(dto: CreateSalesOrderDto) {
-    console.log(dto);
     const { data, error } = await this.supabase.client.rpc('create_sales_order',{
         p_cid: dto.cid,
         p_sales_agent: dto.sales_agent,
@@ -276,7 +275,6 @@ export class OrderService {
         .map(Number);
 
       const orderedPrice = Number(item.price);
-      console.log(orderedPrice);
 
       const ret = {
         id: item.id,
@@ -289,7 +287,6 @@ export class OrderService {
         customPriceEnabled: !prices.includes(orderedPrice),
       }
 
-      console.log(ret);
 
       return {
         id: item.id,

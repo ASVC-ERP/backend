@@ -3,14 +3,50 @@ config();
 
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import * as cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 import { Console } from 'console';
+
+const isProd = process.env.NODE_ENV === 'production';
+
+function assertEnv() {
+  const required = ['JWT_SECRET', 'SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'];
+  const missing = required.filter((key) => !process.env[key]);
+  if (missing.length) {
+    throw new Error(
+      `Missing required environment variables: ${missing.join(', ')}`,
+    );
+  }
+  if ((process.env.JWT_SECRET as string).length < 32) {
+    throw new Error('JWT_SECRET must be at least 32 characters');
+  }
+}
+
+// CORS origin policy:
+//   CORS_ORIGIN set   -> allow exactly those comma-separated origins
+//   unset + dev       -> reflect any origin (localhost convenience)
+//   unset + prod      -> disable CORS entirely. Correct when the built frontend
+//                        is served from this app's ./public folder (same origin,
+//                        so no cross-origin requests to allow).
+function corsOrigin(): boolean | string[] {
+  const raw = process.env.CORS_ORIGIN;
+  if (raw) {
+    return raw
+      .split(',')
+      .map((o) => o.trim())
+      .filter(Boolean);
+  }
+  return isProd ? false : true;
+}
+
 async function bootstrap() {
+  assertEnv();
   const app = await NestFactory.create(AppModule);
 
   app.setGlobalPrefix('api');
+  app.use(cookieParser());
   app.enableCors({
-    origin: true,
+    origin: corsOrigin(),
     credentials: true,
   });
 
@@ -23,6 +59,6 @@ async function bootstrap() {
   console.log("=== DATABASE: ", db);
   console.log("=========================================================================")
 
-  await app.listen(3000, '0.0.0.0');
+  await app.listen(Number(process.env.PORT) || 3000, '0.0.0.0');
 }
 bootstrap();

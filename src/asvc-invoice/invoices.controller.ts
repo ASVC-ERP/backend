@@ -31,7 +31,6 @@ export class InvoicesController {
     @Query('q') q: string,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
   ) {
-    console.log("Search Query: ", q);
     return this.service.search(q, limit);
   }
 
@@ -56,7 +55,6 @@ export class InvoicesController {
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateSalesInvoiceDto,
   ) {
-    console.log("payload: ", dto);
     return this.service.update(id, dto);
   }
 }

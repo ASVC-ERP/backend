@@ -75,7 +75,6 @@ export class PrintService {
 
     const pl = data as PackingListType;
     const udata = data as any;
-    console.log("oid: ",pl.order_id)
 
     return {
       date: pl.invoice_date,

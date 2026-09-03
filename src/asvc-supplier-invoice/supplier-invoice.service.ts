@@ -30,7 +30,6 @@ export class SupplierInvoiceService {
       },
     );
 
-    console.log(error);
 
     if (error) throw new BadRequestException("Failed to create invoice");
     return data;
@@ -59,7 +58,6 @@ export class SupplierInvoiceService {
     const from = (page - 1) * limit;
     const to = from + limit - 1;
 
-    console.log({ page, limit, from, to });
 
     let query = this.supabase.client
       .from('supplier_invoices')
@@ -173,7 +171,6 @@ export class SupplierInvoiceService {
       `, { count: 'exact' })
       .order('id', { ascending: false });
 
-    console.log(name)
     if (name?.trim()) {
       query = query.ilike( 'supplier_invoices.suppliers.name', `%${name.trim()}%` );
     }
@@ -218,8 +215,6 @@ export class SupplierInvoiceService {
       .eq('id', id)
       .single();
 
-    console.log(1111)
-  
     if (findError || !invoice) {
       throw new NotFoundException('Supplier invoice not found');
     }

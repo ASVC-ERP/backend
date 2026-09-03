@@ -1,6 +1,7 @@
 // General Module for the NestJS application
 import { Module } from '@nestjs/common';
 import { ServeStaticModule } from '@nestjs/serve-static';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { join } from 'path';
 import { SupabaseModule } from './supabase/supabase.module';
 import { CustomerModule } from './asvc-customer/asvc-customer.module';0
@@ -21,6 +22,9 @@ import { HealthModule } from './health/health.module';
       rootPath: join(__dirname, '..', 'public'),  // contains react build
       //exclude: ['/api*'], // 👈 don’t override backend API routes
     }),
+    // Default rate limit: 5 requests / 60s per IP. Only routes that use
+    // ThrottlerGuard are actually limited (currently just POST /authenticate/login).
+    ThrottlerModule.forRoot([{ ttl: 60000, limit: 5 }]),
     SupabaseModule,
     CustomerModule,
     UsersModule,

@@ -34,7 +34,6 @@ export class SupplierService {
     const from = (page - 1) * limit;
     const to = from + limit - 1;
 
-    console.log({ page, limit, from, to, search });
 
     let query = this.supabase.client
       .from(this.table)

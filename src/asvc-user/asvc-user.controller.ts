@@ -2,7 +2,10 @@ import { Controller, Get, Post, Put, Delete, Param, Body, ValidationPipe } from 
 import { UsersService } from './asvc-user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { Roles } from '../asvc-auth/roles.decorator';
 
+// Global JwtAuthGuard applies; @Roles restricts every route here to admins.
+@Roles('admin')
 @Controller('user')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
@@ -19,7 +22,10 @@ export class UsersController {
 
   @Get('username/:username')
   async getUsername(@Param('username') username: string) {
-    return this.usersService.read_username(username);
+    const user = await this.usersService.read_username(username);
+    if (!user) return null;
+    const { password, ...safe } = user;
+    return safe;
   }
 
   @Get(':id')

@@ -57,7 +57,6 @@ export class ProductController {
     @Query('q') q: string,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
   ) {
-    console.log("Search Query: ", q);
     return this.service.search(q, limit);
   }
 
@@ -89,7 +88,6 @@ export class ProductController {
     @Param('id') id: number,
     @Body() dto: AdjustStockDto,
   ) {
-    console.log(dto)
     return this.service.adjust_stock(id, dto);
   }
 
