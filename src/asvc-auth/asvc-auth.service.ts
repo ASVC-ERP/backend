@@ -23,11 +23,34 @@ export class AuthService {
     const user = await this.usersService.read_username(username);
     if (!user) return null;
 
+    // Locked account: refuse before checking the password so a lockout
+    // can't be probed or extended by continued guessing.
+    if (
+      user.locked_until &&
+      new Date(user.locked_until).getTime() > Date.now()
+    ) {
+      throw new UnauthorizedException(
+        'Account temporarily locked after too many failed attempts. Try again in a few minutes.',
+      );
+    }
+
     const passwordMatch = await bcrypt.compare(password, user.password);
-    if (!passwordMatch) return null;
+    if (!passwordMatch) {
+      // Best-effort: a failure to record this never changes the outcome.
+      await this.usersService.registerFailedLogin(
+        user.id,
+        user.failed_login_attempts ?? 0,
+      );
+      return null;
+    }
 
     if (user.active === false) {
       throw new UnauthorizedException('Account is disabled');
+    }
+
+    // Successful auth wipes any prior failure state.
+    if ((user.failed_login_attempts ?? 0) > 0 || user.locked_until) {
+      await this.usersService.clearLoginFailures(user.id);
     }
 
     return {
