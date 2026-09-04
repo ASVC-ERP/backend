@@ -10,10 +10,12 @@ import { JwtAuthGuard } from './jwt-auth.guard';
 import { RolesGuard } from './roles.guard';
 import { RefreshTokenService } from './refresh-token.service';
 import { SupabaseModule } from '../supabase/supabase.module';
+import { AuditModule } from '../audit/audit.module';
 
 @Module({
   imports: [
     SupabaseModule,
+    AuditModule,
     PassportModule,
     JwtModule.register({
       secret: process.env.JWT_SECRET,

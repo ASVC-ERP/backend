@@ -2,6 +2,7 @@ import { Injectable, ConflictException, NotFoundException, Logger } from '@nestj
 import { SupabaseService } from '../supabase/supabase.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { AuditService, AuditCtx } from '../audit/audit.service';
 import * as bcrypt from 'bcrypt';
 
 // Login lockout policy (#7). Referenced only here.
@@ -10,7 +11,10 @@ const LOCK_DURATION_MS = 15 * 60 * 1000; // 15 minutes
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly service: SupabaseService) {}
+  constructor(
+    private readonly service: SupabaseService,
+    private readonly audit: AuditService,
+  ) {}
 
   private readonly logger = new Logger(UsersService.name);
   private table = 'users';
@@ -22,7 +26,7 @@ export class UsersService {
     return safe;
   }
 
-  async create(dto: CreateUserDto) {
+  async create(dto: CreateUserDto, ctx?: AuditCtx) {
     const hashedPassword = await bcrypt.hash(dto.password, 10);
     const { data, error } = await this.service.client
       .from(this.table)
@@ -35,6 +39,17 @@ export class UsersService {
       }
       throw new Error(error.message);
     }
+
+    await this.audit.record({
+      action: 'user.create',
+      actorId: ctx?.actorId,
+      actorUsername: ctx?.actorUsername,
+      ip: ctx?.ip,
+      targetType: 'user',
+      targetId: data[0].id,
+      summary: `Created ${data[0].username} (${data[0].role})`,
+    });
+
     return this.sanitize(data[0]);
   }
 
@@ -71,7 +86,7 @@ export class UsersService {
     return data;
   }
 
-  async update(id: number, dto: UpdateUserDto) {
+  async update(id: number, dto: UpdateUserDto, ctx?: AuditCtx) {
     const { data: current } = await this.service.client
       .from(this.table)
       .select('role')
@@ -109,13 +124,63 @@ export class UsersService {
       await this.revokeUserTokens(id);
     }
 
+    // Audit only admin-initiated updates (ctx present). Self-service
+    // password change calls update() without ctx and is audited as
+    // 'password.change' in AuthService -- no double entry.
+    if (ctx) {
+      // class-transformer sets absent optional props to undefined, so filter
+      // to the fields actually submitted.
+      const dtoRec = dto as Record<string, unknown>;
+      const changed = Object.keys(dtoRec).filter(
+        (k) => dtoRec[k] !== undefined && (k !== 'unlock' || dto.unlock),
+      );
+      const uname = data[0]?.username ?? `#${id}`;
+      let action = 'user.update';
+      let summary = `Updated ${uname} (${changed.join(', ') || 'no-op'})`;
+      const meta: Record<string, unknown> = { changed };
+
+      if (dto.unlock) {
+        action = 'user.unlock';
+        summary = `Cleared lockout for ${uname}`;
+      } else if (dto.active === false) {
+        action = 'user.disable';
+        summary = `Disabled ${uname}`;
+      } else if (dto.active === true) {
+        action = 'user.enable';
+        summary = `Enabled ${uname}`;
+      } else if (dto.password != null) {
+        action = 'user.password_reset';
+        summary = `Reset password for ${uname}`;
+      } else if (roleChanged) {
+        action = 'user.role_change';
+        summary = `Role ${uname}: ${current?.role ?? '?'} -> ${dto.role}`;
+        meta.from = current?.role ?? null;
+        meta.to = dto.role;
+      }
+
+      await this.audit.record({
+        action,
+        actorId: ctx.actorId,
+        actorUsername: ctx.actorUsername,
+        ip: ctx.ip,
+        targetType: 'user',
+        targetId: id,
+        summary,
+        meta,
+      });
+    }
+
     return this.sanitize(data[0]);
   }
 
   // Called from AuthService on a wrong-password attempt. Best-effort:
   // a failure here must never turn a valid login into a rejected one, so
-  // errors are logged and swallowed.
-  async registerFailedLogin(userId: number, currentAttempts: number) {
+  // errors are logged and swallowed. Returns whether this attempt tripped
+  // the lock, so the caller can audit it.
+  async registerFailedLogin(
+    userId: number,
+    currentAttempts: number,
+  ): Promise<{ locked: boolean }> {
     const next = currentAttempts + 1;
     const lock = next >= MAX_FAILED_LOGINS;
     const patch = lock
@@ -133,6 +198,7 @@ export class UsersService {
     } catch (e) {
       this.logger.warn(`registerFailedLogin threw: ${String(e)}`);
     }
+    return { locked: lock };
   }
 
   // Called from AuthService after a successful login. Best-effort, same reasoning.
@@ -156,13 +222,30 @@ export class UsersService {
       .is('revoked_at', null);
   }
 
-  async delete(id: number) {
+  async delete(id: number, ctx?: AuditCtx) {
+    const { data: existing } = await this.service.client
+      .from(this.table)
+      .select('username')
+      .eq('id', id)
+      .maybeSingle();
+
     const { error } = await this.service.client
       .from(this.table)
       .delete()
       .eq('id', id);
 
     if (error) throw new Error(error.message);
+
+    await this.audit.record({
+      action: 'user.delete',
+      actorId: ctx?.actorId,
+      actorUsername: ctx?.actorUsername,
+      ip: ctx?.ip,
+      targetType: 'user',
+      targetId: id,
+      summary: `Deleted ${existing?.username ?? `user #${id}`}`,
+    });
+
     return { deleted: true };
   }
 }

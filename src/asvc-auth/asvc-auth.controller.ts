@@ -34,11 +34,13 @@ export class AuthController {
   @Post('login')
   async login(
     @Body() body: { username: string; password: string },
+    @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
     const { access_token, refresh_token } = await this.authService.login(
       body.username,
       body.password,
+      req.ip,
     );
     res.cookie(REFRESH_COOKIE, refresh_token, refreshCookieOptions);
     return { access_token };
@@ -58,7 +60,10 @@ export class AuthController {
     const presented = req.cookies?.[REFRESH_COOKIE];
     if (!presented) throw new UnauthorizedException('No refresh token');
 
-    const { access_token, refresh_token } = await this.authService.refresh(presented);
+    const { access_token, refresh_token } = await this.authService.refresh(
+      presented,
+      req.ip,
+    );
     res.cookie(REFRESH_COOKIE, refresh_token, refreshCookieOptions);
     return { access_token };
   }
@@ -69,7 +74,7 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    await this.authService.logout(req.cookies?.[REFRESH_COOKIE]);
+    await this.authService.logout(req.cookies?.[REFRESH_COOKIE], req.ip);
     res.clearCookie(REFRESH_COOKIE, { path: refreshCookieOptions.path });
     return { ok: true };
   }
@@ -94,6 +99,7 @@ export class AuthController {
       req.user.username,
       dto.currentPassword,
       dto.newPassword,
+      req.ip,
     );
     res.cookie(REFRESH_COOKIE, refresh_token, refreshCookieOptions);
     return { access_token };

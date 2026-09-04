@@ -1,8 +1,14 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, ValidationPipe } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Param, Body, Req, ValidationPipe } from '@nestjs/common';
 import { UsersService } from './asvc-user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { Roles } from '../asvc-auth/roles.decorator';
+import { AuditCtx } from '../audit/audit.service';
+
+// req.user is set by JwtStrategy: { userId, username, name, role }.
+function ctxFrom(req): AuditCtx {
+  return { actorId: req.user?.userId, actorUsername: req.user?.username, ip: req.ip };
+}
 
 // Global JwtAuthGuard applies; @Roles restricts every route here to admins.
 @Roles('admin')
@@ -11,8 +17,8 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Post()
-  async create(@Body(new ValidationPipe()) dto: CreateUserDto) {
-    return this.usersService.create(dto);
+  async create(@Body(new ValidationPipe()) dto: CreateUserDto, @Req() req) {
+    return this.usersService.create(dto, ctxFrom(req));
   }
 
   @Get()
@@ -34,12 +40,16 @@ export class UsersController {
   }
 
   @Put(':id')
-  async update(@Param('id') id: string, @Body(new ValidationPipe()) dto: UpdateUserDto) {
-    return this.usersService.update(Number(id), dto);
+  async update(
+    @Param('id') id: string,
+    @Body(new ValidationPipe()) dto: UpdateUserDto,
+    @Req() req,
+  ) {
+    return this.usersService.update(Number(id), dto, ctxFrom(req));
   }
 
   @Delete(':id')
-  async delete(@Param('id') id: string) {
-    return this.usersService.delete(Number(id));
+  async delete(@Param('id') id: string, @Req() req) {
+    return this.usersService.delete(Number(id), ctxFrom(req));
   }
 }
