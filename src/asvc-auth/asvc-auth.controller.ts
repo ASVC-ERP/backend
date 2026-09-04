@@ -12,6 +12,7 @@ import type { Request, Response } from 'express';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { AuthService } from './asvc-auth.service';
 import { Public } from './public.decorator';
+import { ChangePasswordDto } from './dto/change-password.dto';
 
 const REFRESH_COOKIE = 'refresh_token';
 
@@ -77,5 +78,24 @@ export class AuthController {
   @Get('profile')
   getProfile(@Req() req) {
     return req.user;
+  }
+
+  // Protected: the logged-in user changes their own password. Every other
+  // session is revoked; this one is handed a fresh token pair so it stays
+  // signed in.
+  @Post('change-password')
+  async changePassword(
+    @Req() req,
+    @Body() dto: ChangePasswordDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const { access_token, refresh_token } = await this.authService.changePassword(
+      req.user.userId,
+      req.user.username,
+      dto.currentPassword,
+      dto.newPassword,
+    );
+    res.cookie(REFRESH_COOKIE, refresh_token, refreshCookieOptions);
+    return { access_token };
   }
 }
