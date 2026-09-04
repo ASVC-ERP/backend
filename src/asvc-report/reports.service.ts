@@ -41,6 +41,24 @@ export const DETAIL_PANELS = {
       { header: 'Days Ago', key: 'days_ago', width: 12 },
     ] as Col[],
   },
+  sales_by_city: {
+    report: 'sales' as const,
+    sheet: 'Sales by City',
+    cols: [
+      { header: 'City', key: 'city', width: 28 },
+      { header: 'Sales', key: 'total', width: 16, money: true },
+    ] as Col[],
+  },
+  pnl_by_brand: {
+    report: 'sales' as const,
+    sheet: 'P&L by Brand',
+    cols: [
+      { header: 'Brand', key: 'brand', width: 24 },
+      { header: 'Revenue', key: 'revenue', width: 16, money: true },
+      { header: 'Profit', key: 'profit', width: 16, money: true },
+      { header: 'Margin %', key: 'margin_pct', width: 12 },
+    ] as Col[],
+  },
   top_products: {
     report: 'purchases' as const,
     sheet: 'Top Products',

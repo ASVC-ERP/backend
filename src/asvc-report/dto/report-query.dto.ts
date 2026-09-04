@@ -30,6 +30,8 @@ export const DETAIL_PANEL_NAMES = [
   'best_selling',
   'top_customers',
   'slow_moving',
+  'sales_by_city',
+  'pnl_by_brand',
   'top_products',
   'top_suppliers',
 ] as const;
