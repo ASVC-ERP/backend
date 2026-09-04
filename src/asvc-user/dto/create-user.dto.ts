@@ -1,4 +1,5 @@
-import { IsString, IsOptional, IsIn, MinLength } from 'class-validator';
+import { IsString, IsOptional, IsIn } from 'class-validator';
+import { IsValidPassword } from '../../common/is-valid-password.decorator';
 
 export class CreateUserDto {
   @IsString()
@@ -7,8 +8,7 @@ export class CreateUserDto {
   @IsString()
   name: string;
 
-  @IsString()
-  @MinLength(6)
+  @IsValidPassword()
   password: string;
 
   @IsOptional()

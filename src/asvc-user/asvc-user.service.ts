@@ -1,19 +1,24 @@
-import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
+import { Injectable, ConflictException, NotFoundException, Logger } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import * as bcrypt from 'bcrypt';
 
+// Login lockout policy (#7). Referenced only here.
+const MAX_FAILED_LOGINS = 5;
+const LOCK_DURATION_MS = 15 * 60 * 1000; // 15 minutes
+
 @Injectable()
 export class UsersService {
   constructor(private readonly service: SupabaseService) {}
 
+  private readonly logger = new Logger(UsersService.name);
   private table = 'users';
 
-  // Strip the password hash before a user object leaves the service.
-  private sanitize<T extends { password?: unknown }>(user: T | null) {
+  // Strip internal fields before a user object leaves the service.
+  private sanitize<T extends Record<string, unknown>>(user: T | null) {
     if (!user) return user;
-    const { password, ...safe } = user;
+    const { password, failed_login_attempts, ...safe } = user;
     return safe;
   }
 
@@ -73,12 +78,21 @@ export class UsersService {
       .eq('id', id)
       .maybeSingle();
 
-    if (dto.password) {
-      dto.password = await bcrypt.hash(dto.password, 10);
+    // Build the DB patch from the DTO. `unlock` is an admin action, not a
+    // column: consume it, then drop it before it reaches Supabase.
+    const patch: Record<string, unknown> = { ...dto };
+    delete patch.unlock;
+    if (dto.unlock) {
+      patch.failed_login_attempts = 0;
+      patch.locked_until = null;
     }
+    if (typeof patch.password === 'string') {
+      patch.password = await bcrypt.hash(patch.password, 10);
+    }
+
     const { data, error } = await this.service.client
       .from(this.table)
-      .update(dto)
+      .update(patch)
       .eq('id', id)
       .select();
 
@@ -96,6 +110,42 @@ export class UsersService {
     }
 
     return this.sanitize(data[0]);
+  }
+
+  // Called from AuthService on a wrong-password attempt. Best-effort:
+  // a failure here must never turn a valid login into a rejected one, so
+  // errors are logged and swallowed.
+  async registerFailedLogin(userId: number, currentAttempts: number) {
+    const next = currentAttempts + 1;
+    const lock = next >= MAX_FAILED_LOGINS;
+    const patch = lock
+      ? {
+          failed_login_attempts: 0,
+          locked_until: new Date(Date.now() + LOCK_DURATION_MS).toISOString(),
+        }
+      : { failed_login_attempts: next };
+    try {
+      const { error } = await this.service.client
+        .from(this.table)
+        .update(patch)
+        .eq('id', userId);
+      if (error) this.logger.warn(`registerFailedLogin: ${error.message}`);
+    } catch (e) {
+      this.logger.warn(`registerFailedLogin threw: ${String(e)}`);
+    }
+  }
+
+  // Called from AuthService after a successful login. Best-effort, same reasoning.
+  async clearLoginFailures(userId: number) {
+    try {
+      const { error } = await this.service.client
+        .from(this.table)
+        .update({ failed_login_attempts: 0, locked_until: null })
+        .eq('id', userId);
+      if (error) this.logger.warn(`clearLoginFailures: ${error.message}`);
+    } catch (e) {
+      this.logger.warn(`clearLoginFailures threw: ${String(e)}`);
+    }
   }
 
   private async revokeUserTokens(userId: number) {

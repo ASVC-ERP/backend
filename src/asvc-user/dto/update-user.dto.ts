@@ -1,4 +1,5 @@
-import { IsString, IsOptional, IsIn, IsBoolean, MinLength } from 'class-validator';
+import { IsString, IsOptional, IsIn, IsBoolean } from 'class-validator';
+import { IsValidPassword } from '../../common/is-valid-password.decorator';
 
 export class UpdateUserDto {
   @IsOptional()
@@ -10,8 +11,7 @@ export class UpdateUserDto {
   name?: string;
 
   @IsOptional()
-  @IsString()
-  @MinLength(6)
+  @IsValidPassword()
   password?: string;
 
   @IsOptional()
@@ -21,4 +21,10 @@ export class UpdateUserDto {
   @IsOptional()
   @IsBoolean()
   active?: boolean;
+
+  // Admin action from the Users screen: clear a lockout early.
+  // Not a column -- consumed and stripped in UsersService.update().
+  @IsOptional()
+  @IsBoolean()
+  unlock?: boolean;
 }
