@@ -1,4 +1,4 @@
-import { Injectable, ConflictException } from '@nestjs/common';
+import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -47,9 +47,10 @@ export class UsersService {
       .from(this.table)
       .select('*')
       .eq('id', id)
-      .single();
+      .maybeSingle();
 
     if (error) throw new Error(error.message);
+    if (!data) throw new NotFoundException('User not found');
     return this.sanitize(data);
   }
 
@@ -66,6 +67,12 @@ export class UsersService {
   }
 
   async update(id: number, dto: UpdateUserDto) {
+    const { data: current } = await this.service.client
+      .from(this.table)
+      .select('role')
+      .eq('id', id)
+      .maybeSingle();
+
     if (dto.password) {
       dto.password = await bcrypt.hash(dto.password, 10);
     }
@@ -81,7 +88,22 @@ export class UsersService {
       }
       throw new Error(error.message);
     }
+
+    // Anything that changes who the user is, or shuts them off, ends live sessions.
+    const roleChanged = dto.role != null && dto.role !== current?.role;
+    if (dto.password != null || dto.active === false || roleChanged) {
+      await this.revokeUserTokens(id);
+    }
+
     return this.sanitize(data[0]);
+  }
+
+  private async revokeUserTokens(userId: number) {
+    await this.service.client
+      .from('refresh_tokens')
+      .update({ revoked_at: new Date().toISOString() })
+      .eq('user_id', userId)
+      .is('revoked_at', null);
   }
 
   async delete(id: number) {

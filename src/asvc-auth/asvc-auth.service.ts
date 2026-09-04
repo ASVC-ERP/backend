@@ -26,6 +26,10 @@ export class AuthService {
     const passwordMatch = await bcrypt.compare(password, user.password);
     if (!passwordMatch) return null;
 
+    if (user.active === false) {
+      throw new UnauthorizedException('Account is disabled');
+    }
+
     return {
       id: user.id,
       username: user.username,

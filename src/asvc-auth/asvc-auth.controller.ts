@@ -9,7 +9,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
-import { ThrottlerGuard } from '@nestjs/throttler';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { AuthService } from './asvc-auth.service';
 import { Public } from './public.decorator';
 
@@ -44,7 +44,11 @@ export class AuthController {
   }
 
   // Public: authenticates via the refresh cookie, not a bearer token.
+  // Rate-limited a bit higher than login — a hard reload across several tabs can
+  // legitimately fire a few refreshes close together.
   @Public()
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @Post('refresh')
   async refresh(
     @Req() req: Request,
