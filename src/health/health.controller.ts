@@ -9,7 +9,6 @@ export class HealthController {
 
   @Get()
   check() {
-    const health = this.healthService.check();
-    return health;
+    return this.healthService.check();
   }
 }

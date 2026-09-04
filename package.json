@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "description": "Simple NestJS backend for Google Sheets",
   "private": true,
+  "engines": {
+    "node": ">=22",
+    "bun": ">=1.2"
+  },
   "scripts": {
     "start": "node dist/main.js",
     "dev": "nest start --watch",

@@ -1,8 +1,10 @@
 // General Module for the NestJS application
 import { Module } from '@nestjs/common';
+import { APP_FILTER } from '@nestjs/core';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { join } from 'path';
+import { AllExceptionsFilter } from './common/all-exceptions.filter';
 import { SupabaseModule } from './supabase/supabase.module';
 import { CustomerModule } from './asvc-customer/asvc-customer.module';0
 import { UsersModule } from './asvc-user/asvc-user.module';
@@ -38,6 +40,7 @@ import { HealthModule } from './health/health.module';
     PrintModule,
     ReportsModule,
     HealthModule,
-  ]
+  ],
+  providers: [{ provide: APP_FILTER, useClass: AllExceptionsFilter }],
 })
 export class AppModule {}
