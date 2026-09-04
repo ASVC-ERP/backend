@@ -119,6 +119,16 @@ export class ReportsService {
     return data;
   }
 
+  // Purchase status filter. A PENDING supplier invoice is a draft PO -- it
+  // hasn't touched stock or cost -- so the report defaults to posted only.
+  //   undefined -> 'POSTED'   (real purchases)
+  //   'all'     -> null       (no filter; include pending)
+  //   anything else passes through (e.g. 'PENDING')
+  private normStatus(status?: string): string | null {
+    if (status === 'all') return null;
+    return status ?? 'POSTED';
+  }
+
   private async purchaseRpc(
     from: string,
     to: string,
@@ -128,7 +138,7 @@ export class ReportsService {
     const args: Record<string, unknown> = {
       p_from: from,
       p_to: to,
-      p_status: status ?? null,
+      p_status: this.normStatus(status),
     };
     if (limit != null) args.p_limit = limit;
     const { data, error } = await this.supabase.client.rpc(
