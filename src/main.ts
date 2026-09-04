@@ -3,6 +3,7 @@ config();
 
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import * as cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 import { Console } from 'console';
@@ -41,9 +42,13 @@ function corsOrigin(): boolean | string[] {
 
 async function bootstrap() {
   assertEnv();
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   app.setGlobalPrefix('api');
+  // One proxy hop in front (Render, and most PaaS). Makes req.ip the real
+  // client address instead of the proxy's -- needed for accurate audit-log
+  // IPs and for per-IP rate limiting to actually be per-IP.
+  app.set('trust proxy', 1);
   app.use(cookieParser());
   app.enableCors({
     origin: corsOrigin(),

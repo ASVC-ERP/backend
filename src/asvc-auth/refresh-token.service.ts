@@ -1,12 +1,16 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import * as crypto from 'crypto';
 import { SupabaseService } from '../supabase/supabase.service';
+import { AuditService } from '../audit/audit.service';
 
 const TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
 @Injectable()
 export class RefreshTokenService {
-  constructor(private readonly supabase: SupabaseService) {}
+  constructor(
+    private readonly supabase: SupabaseService,
+    private readonly audit: AuditService,
+  ) {}
 
   private table = 'refresh_tokens';
 
@@ -39,7 +43,10 @@ export class RefreshTokenService {
    * a new token is issued. Reuse of an already-revoked token revokes the whole
    * family (theft signal). Returns { userId, token } where token is the new raw token.
    */
-  async rotate(presented: string): Promise<{ userId: number; token: string }> {
+  async rotate(
+    presented: string,
+    ip?: string,
+  ): Promise<{ userId: number; token: string }> {
     const { data: row, error } = await this.supabase.client
       .from(this.table)
       .select('*')
@@ -50,6 +57,13 @@ export class RefreshTokenService {
 
     if (row.revoked_at) {
       await this.revokeAllForUser(row.user_id);
+      await this.audit.record({
+        action: 'token.reuse_detected',
+        actorId: row.user_id,
+        summary: 'Revoked refresh token presented again — all sessions revoked',
+        meta: { tokenId: row.id },
+        ip,
+      });
       throw new UnauthorizedException('Refresh token reuse detected');
     }
     if (new Date(row.expires_at).getTime() < Date.now()) {
@@ -88,13 +102,18 @@ export class RefreshTokenService {
     return { userId: row.user_id, token };
   }
 
-  /** Revoke a single token (used at logout). No-op if it does not exist. */
-  async revoke(presented: string): Promise<void> {
-    await this.supabase.client
+  /**
+   * Revoke a single token (used at logout). No-op if it does not exist.
+   * Returns the owning user id when a live row was revoked, for auditing.
+   */
+  async revoke(presented: string): Promise<number | null> {
+    const { data } = await this.supabase.client
       .from(this.table)
       .update({ revoked_at: new Date().toISOString() })
       .eq('token_hash', this.hash(presented))
-      .is('revoked_at', null);
+      .is('revoked_at', null)
+      .select('user_id');
+    return data && data.length ? data[0].user_id : null;
   }
 
   async revokeAllForUser(userId: number): Promise<void> {
