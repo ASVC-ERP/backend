@@ -5,6 +5,7 @@ import { Roles } from '../asvc-auth/roles.decorator';
 import {
   SalesReportQueryDto,
   PurchaseReportQueryDto,
+  ReportDetailQueryDto,
 } from './dto/report-query.dto';
 
 const XLSX_MIME =
@@ -47,6 +48,23 @@ export class ReportsController {
       .set({
         'Content-Type': XLSX_MIME,
         'Content-Disposition': `attachment; filename="purchase-report_${q.from}_${q.to}.xlsx"`,
+      })
+      .end(buf);
+  }
+
+  // "View full" — the complete rows for one dashboard panel.
+  @Get('detail')
+  detail(@Query() q: ReportDetailQueryDto) {
+    return this.service.detailList(q.panel, q.from, q.to);
+  }
+
+  @Get('detail/export')
+  async detailExport(@Query() q: ReportDetailQueryDto, @Res() res: Response) {
+    const buf = await this.service.detailListWorkbook(q.panel, q.from, q.to);
+    res
+      .set({
+        'Content-Type': XLSX_MIME,
+        'Content-Disposition': `attachment; filename="${q.panel}_${q.from}_${q.to}.xlsx"`,
       })
       .end(buf);
   }
