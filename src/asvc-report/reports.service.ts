@@ -9,7 +9,19 @@ type Col = { header: string; key: string; width?: number; money?: boolean };
 export class ReportsService {
   constructor(private readonly supabase: SupabaseService) {}
 
-  async salesDashboard(from: string, to: string, slowDays?: number) {
+  // The equal-length window immediately before [from, to].
+  private previousRange(from: string, to: string) {
+    const day = 86400000;
+    const f = new Date(from + 'T00:00:00Z').getTime();
+    const t = new Date(to + 'T00:00:00Z').getTime();
+    const span = t - f;
+    const prevTo = new Date(f - day);
+    const prevFrom = new Date(f - day - span);
+    const iso = (d: Date) => d.toISOString().slice(0, 10);
+    return { prevFrom: iso(prevFrom), prevTo: iso(prevTo) };
+  }
+
+  private async salesRpc(from: string, to: string, slowDays?: number) {
     const { data, error } = await this.supabase.client.rpc(
       'report_sales_dashboard',
       { p_from: from, p_to: to, p_slow_days: slowDays ?? 90 },
@@ -18,13 +30,35 @@ export class ReportsService {
     return data;
   }
 
-  async purchaseDashboard(from: string, to: string, status?: string) {
+  private async purchaseRpc(from: string, to: string, status?: string) {
     const { data, error } = await this.supabase.client.rpc(
       'report_purchase_dashboard',
       { p_from: from, p_to: to, p_status: status ?? null },
     );
     if (error) throw new InternalServerErrorException(error.message);
     return data;
+  }
+
+  // Dashboards return the current window plus `kpis_prev` for the previous
+  // equal-length window, so the frontend can show period-over-period deltas.
+  async salesDashboard(from: string, to: string, slowDays?: number) {
+    const { prevFrom, prevTo } = this.previousRange(from, to);
+    const [cur, prev] = await Promise.all([
+      this.salesRpc(from, to, slowDays),
+      this.salesRpc(prevFrom, prevTo, slowDays),
+    ]);
+    cur.kpis_prev = prev?.kpis ?? null;
+    return cur;
+  }
+
+  async purchaseDashboard(from: string, to: string, status?: string) {
+    const { prevFrom, prevTo } = this.previousRange(from, to);
+    const [cur, prev] = await Promise.all([
+      this.purchaseRpc(from, to, status),
+      this.purchaseRpc(prevFrom, prevTo, status),
+    ]);
+    cur.kpis_prev = prev?.kpis ?? null;
+    return cur;
   }
 
   // ---- xlsx export --------------------------------------------------------
@@ -37,14 +71,20 @@ export class ReportsService {
     const summary = wb.addWorksheet('Summary');
     this.writeMeta(summary, 'Sales Report', from, to);
     summary.addRow([]);
-    summary.addRow(['Metric', 'Value']).font = { bold: true };
-    summary.addRow(['Total Revenue', Number(d.kpis.revenue)]);
-    summary.addRow(['COGS', Number(d.kpis.cogs)]);
-    summary.addRow(['Gross Profit', Number(d.kpis.gross_profit)]);
-    summary.addRow(['Gross Margin %', Number(d.kpis.margin_pct)]);
+    summary.addRow(['Metric', 'Value', 'Previous period', 'Change %']).font = {
+      bold: true,
+    };
+    const p = d.kpis_prev;
+    this.kpiRow(summary, 'Total Revenue', d.kpis.revenue, p?.revenue);
+    this.kpiRow(summary, 'COGS', d.kpis.cogs, p?.cogs);
+    this.kpiRow(summary, 'Gross Profit', d.kpis.gross_profit, p?.gross_profit);
+    this.kpiRow(summary, 'Gross Margin %', d.kpis.margin_pct, p?.margin_pct);
     summary.getColumn(1).width = 22;
-    summary.getColumn(2).width = 18;
+    summary.getColumn(2).width = 16;
+    summary.getColumn(3).width = 16;
+    summary.getColumn(4).width = 12;
     summary.getColumn(2).numFmt = '#,##0.00';
+    summary.getColumn(3).numFmt = '#,##0.00';
 
     this.addSheet(wb, 'Best-Selling', d.best_selling, [
       { header: 'Product ID', key: 'product_id', width: 12 },
@@ -83,11 +123,21 @@ export class ReportsService {
     const summary = wb.addWorksheet('Summary');
     this.writeMeta(summary, 'Purchase Report', from, to);
     summary.addRow([]);
-    summary.addRow(['Metric', 'Value']).font = { bold: true };
-    summary.addRow(['Total Purchases', Number(d.kpis.total_purchases)]);
+    summary.addRow(['Metric', 'Value', 'Previous period', 'Change %']).font = {
+      bold: true,
+    };
+    this.kpiRow(
+      summary,
+      'Total Purchases',
+      d.kpis.total_purchases,
+      d.kpis_prev?.total_purchases,
+    );
     summary.getColumn(1).width = 22;
-    summary.getColumn(2).width = 18;
+    summary.getColumn(2).width = 16;
+    summary.getColumn(3).width = 16;
+    summary.getColumn(4).width = 12;
     summary.getColumn(2).numFmt = '#,##0.00';
+    summary.getColumn(3).numFmt = '#,##0.00';
 
     this.addSheet(wb, 'Top Products', d.top_products, [
       { header: 'Product ID', key: 'product_id', width: 12 },
@@ -101,6 +151,21 @@ export class ReportsService {
     ]);
 
     return Buffer.from((await wb.xlsx.writeBuffer()) as ArrayBuffer);
+  }
+
+  // "Metric | value | previous | change%" row for a Summary sheet.
+  private kpiRow(
+    ws: import('exceljs').Worksheet,
+    label: string,
+    cur: unknown,
+    prev: unknown,
+  ) {
+    const c = Number(cur) || 0;
+    const hasPrev = prev != null && prev !== '';
+    const p = Number(prev);
+    const change =
+      hasPrev && p !== 0 ? `${(((c - p) / p) * 100).toFixed(1)}%` : '';
+    ws.addRow([label, c, hasPrev ? p : '', change]);
   }
 
   private newWorkbook() {
