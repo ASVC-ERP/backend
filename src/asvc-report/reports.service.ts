@@ -1,9 +1,67 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  BadRequestException,
+} from '@nestjs/common';
 import { Workbook } from 'exceljs';
 import { SupabaseService } from '../supabase/supabase.service';
 
 // Column spec for a sheet: header label + a getter off each row object.
 type Col = { header: string; key: string; width?: number; money?: boolean };
+
+// The dashboard lists that have a "View full" detail page. Keyed by the
+// jsonb key the RPC returns; carries the report it belongs to plus the
+// sheet/columns for a one-list xlsx export.
+export const DETAIL_PANELS = {
+  best_selling: {
+    report: 'sales' as const,
+    sheet: 'Best-Selling',
+    cols: [
+      { header: 'Product ID', key: 'product_id', width: 12 },
+      { header: 'Description', key: 'description', width: 40 },
+      { header: 'Total Sales', key: 'total', width: 16, money: true },
+    ] as Col[],
+  },
+  top_customers: {
+    report: 'sales' as const,
+    sheet: 'Top Customers',
+    cols: [
+      { header: 'Customer ID', key: 'customer_id', width: 12 },
+      { header: 'Name', key: 'name', width: 32 },
+      { header: 'Sales', key: 'total', width: 16, money: true },
+    ] as Col[],
+  },
+  slow_moving: {
+    report: 'sales' as const,
+    sheet: 'Slow-Moving',
+    cols: [
+      { header: 'Product ID', key: 'product_id', width: 12 },
+      { header: 'Description', key: 'description', width: 40 },
+      { header: 'Last Sold', key: 'last_sold', width: 14 },
+      { header: 'Days Ago', key: 'days_ago', width: 12 },
+    ] as Col[],
+  },
+  top_products: {
+    report: 'purchases' as const,
+    sheet: 'Top Products',
+    cols: [
+      { header: 'Product ID', key: 'product_id', width: 12 },
+      { header: 'Description', key: 'description', width: 40 },
+      { header: 'Total', key: 'total', width: 16, money: true },
+    ] as Col[],
+  },
+  top_suppliers: {
+    report: 'purchases' as const,
+    sheet: 'Top Suppliers',
+    cols: [
+      { header: 'Supplier ID', key: 'supplier_id', width: 12 },
+      { header: 'Name', key: 'name', width: 32 },
+      { header: 'Total', key: 'total', width: 16, money: true },
+    ] as Col[],
+  },
+};
+export type DetailPanel = keyof typeof DETAIL_PANELS;
+const BIG_LIMIT = 100000;
 
 @Injectable()
 export class ReportsService {
@@ -21,19 +79,43 @@ export class ReportsService {
     return { prevFrom: iso(prevFrom), prevTo: iso(prevTo) };
   }
 
-  private async salesRpc(from: string, to: string, slowDays?: number) {
+  private async salesRpc(
+    from: string,
+    to: string,
+    slowDays?: number,
+    limit?: number,
+    slowLimit?: number,
+  ) {
+    const args: Record<string, unknown> = {
+      p_from: from,
+      p_to: to,
+      p_slow_days: slowDays ?? 90,
+    };
+    if (limit != null) args.p_limit = limit;
+    if (slowLimit != null) args.p_slow_limit = slowLimit;
     const { data, error } = await this.supabase.client.rpc(
       'report_sales_dashboard',
-      { p_from: from, p_to: to, p_slow_days: slowDays ?? 90 },
+      args,
     );
     if (error) throw new InternalServerErrorException(error.message);
     return data;
   }
 
-  private async purchaseRpc(from: string, to: string, status?: string) {
+  private async purchaseRpc(
+    from: string,
+    to: string,
+    status?: string,
+    limit?: number,
+  ) {
+    const args: Record<string, unknown> = {
+      p_from: from,
+      p_to: to,
+      p_status: status ?? null,
+    };
+    if (limit != null) args.p_limit = limit;
     const { data, error } = await this.supabase.client.rpc(
       'report_purchase_dashboard',
-      { p_from: from, p_to: to, p_status: status ?? null },
+      args,
     );
     if (error) throw new InternalServerErrorException(error.message);
     return data;
@@ -59,6 +141,29 @@ export class ReportsService {
     ]);
     cur.kpis_prev = prev?.kpis ?? null;
     return cur;
+  }
+
+  // ---- "View full" detail lists -----------------------------------------
+  // The full (un-truncated) rows for one dashboard panel.
+
+  async detailList(panel: string, from: string, to: string) {
+    const cfg = DETAIL_PANELS[panel as DetailPanel];
+    if (!cfg) throw new BadRequestException(`Unknown panel: ${panel}`);
+    const data =
+      cfg.report === 'sales'
+        ? await this.salesRpc(from, to, 90, BIG_LIMIT, BIG_LIMIT)
+        : await this.purchaseRpc(from, to, undefined, BIG_LIMIT);
+    return { panel, rows: data?.[panel] ?? [] };
+  }
+
+  async detailListWorkbook(panel: string, from: string, to: string) {
+    const cfg = DETAIL_PANELS[panel as DetailPanel];
+    if (!cfg) throw new BadRequestException(`Unknown panel: ${panel}`);
+    const { rows } = await this.detailList(panel, from, to);
+    const wb = this.newWorkbook();
+    this.writeMeta(wb.addWorksheet('About'), cfg.sheet, from, to);
+    this.addSheet(wb, cfg.sheet, rows, cfg.cols);
+    return Buffer.from((await wb.xlsx.writeBuffer()) as ArrayBuffer);
   }
 
   // ---- xlsx export --------------------------------------------------------

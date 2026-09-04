@@ -1,4 +1,4 @@
-import { IsDateString, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsDateString, IsIn, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 
 class ReportRangeDto {
@@ -22,4 +22,19 @@ export class PurchaseReportQueryDto extends ReportRangeDto {
   @IsOptional()
   @IsString()
   status?: string;
+}
+
+// "View full" detail list for one dashboard panel. The panel value also
+// says which report it belongs to (see DETAIL_PANELS in reports.service).
+export const DETAIL_PANEL_NAMES = [
+  'best_selling',
+  'top_customers',
+  'slow_moving',
+  'top_products',
+  'top_suppliers',
+] as const;
+
+export class ReportDetailQueryDto extends ReportRangeDto {
+  @IsIn(DETAIL_PANEL_NAMES as unknown as string[])
+  panel: string;
 }
