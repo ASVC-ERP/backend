@@ -1,4 +1,8 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  BadRequestException,
+} from '@nestjs/common';
 import { UsersService } from '../asvc-user/asvc-user.service';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
@@ -100,5 +104,44 @@ export class AuthService {
     if (presentedRefreshToken) {
       await this.refreshTokens.revoke(presentedRefreshToken);
     }
+  }
+
+  // Self-service password change for the logged-in user. Verifies the
+  // current password, applies the new one (UsersService.update hashes it
+  // and revokes every refresh token this user holds), then hands back a
+  // fresh token pair so the caller's own session survives -- other
+  // devices are signed out on their next refresh.
+  async changePassword(
+    userId: number,
+    username: string,
+    currentPassword: string,
+    newPassword: string,
+  ) {
+    const user = await this.usersService.read_username(username);
+    if (!user) throw new UnauthorizedException('User no longer exists');
+
+    const currentOk = await bcrypt.compare(currentPassword, user.password);
+    if (!currentOk) {
+      throw new UnauthorizedException('Current password is incorrect');
+    }
+
+    const unchanged = await bcrypt.compare(newPassword, user.password);
+    if (unchanged) {
+      throw new BadRequestException(
+        'New password must be different from the current one',
+      );
+    }
+
+    await this.usersService.update(userId, { password: newPassword });
+
+    return {
+      access_token: this.signAccessToken({
+        id: user.id,
+        username: user.username,
+        role: user.role,
+        name: user.name,
+      }),
+      refresh_token: await this.refreshTokens.issue(user.id),
+    };
   }
 }
