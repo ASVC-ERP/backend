@@ -5,3 +5,7 @@ dist/
 .env
 .env.*
 !.env.example
+
+# Database backups
+*.sql
+!supabase/migrations/*.sql
