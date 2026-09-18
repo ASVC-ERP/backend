@@ -8,6 +8,8 @@ import {
   ReportDetailQueryDto,
   CustomerReportQueryDto,
   CustomerDetailQueryDto,
+  SupplierReportQueryDto,
+  SupplierDetailQueryDto,
 } from './dto/report-query.dto';
 
 const XLSX_MIME =
@@ -92,6 +94,58 @@ export class ReportsController {
       .set({
         'Content-Type': XLSX_MIME,
         'Content-Disposition': `attachment; filename="customer-${id}_${q.from}_${q.to}.xlsx"`,
+      })
+      .end(buf);
+  }
+
+  @Get('suppliers')
+  suppliers(@Query() q: SupplierReportQueryDto) {
+    return this.service.supplierDashboard(q.from, q.to, q.status, q.limit);
+  }
+
+  @Get('suppliers/export')
+  async suppliersExport(
+    @Query() q: SupplierReportQueryDto,
+    @Res() res: Response,
+  ) {
+    const buf = await this.service.supplierWorkbook(
+      q.from,
+      q.to,
+      q.status,
+      q.limit,
+    );
+    res
+      .set({
+        'Content-Type': XLSX_MIME,
+        'Content-Disposition': `attachment; filename="supplier-report_${q.from}_${q.to}.xlsx"`,
+      })
+      .end(buf);
+  }
+
+  @Get('suppliers/:id')
+  supplierDetail(
+    @Param('id', ParseIntPipe) id: number,
+    @Query() q: SupplierDetailQueryDto,
+  ) {
+    return this.service.supplierDetail(id, q.from, q.to, q.status);
+  }
+
+  @Get('suppliers/:id/export')
+  async supplierDetailExport(
+    @Param('id', ParseIntPipe) id: number,
+    @Query() q: SupplierDetailQueryDto,
+    @Res() res: Response,
+  ) {
+    const buf = await this.service.supplierDetailWorkbook(
+      id,
+      q.from,
+      q.to,
+      q.status,
+    );
+    res
+      .set({
+        'Content-Type': XLSX_MIME,
+        'Content-Disposition': `attachment; filename="supplier-${id}_${q.from}_${q.to}.xlsx"`,
       })
       .end(buf);
   }
