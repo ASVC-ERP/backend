@@ -302,14 +302,54 @@ export class OrderService {
   }
   
 
+  // Sales Order History tab on a product's details page. Queried directly
+  // rather than through the get_served_orders_by_item() DB function so the
+  // status list can be widened without a migration to that function (it's
+  // defined against the live Supabase project, not something to change
+  // here) — 'Open' orders included, so this is no longer only "served"
+  // orders despite the function name it replaces.
   async getServedOrdersByItem(id: number) {
-    const { data, error } = await this.supabase.client.rpc(
-      'get_served_orders_by_item',
-      { p_item_id: id },
-    );
-  
-    if (error) throw error;
-    return data;
+    const STATUSES = ['Open', 'Served', 'Partial Invoiced', 'Invoiced'];
+
+    try {
+      const { data, error } = await this.supabase.client
+        .from('sales_order_items')
+        .select(`
+          item_id,
+          quantity,
+          serve_qty,
+          price,
+          sales_orders!inner (
+            id,
+            order_date,
+            status,
+            customers!inner ( name )
+          )
+        `)
+        .eq('item_id', id)
+        .in('sales_orders.status', STATUSES);
+
+      if (error) throw error;
+
+      return (data ?? [])
+        .map((row) => {
+          const order = row.sales_orders as any;
+          return {
+            order_id: order.id,
+            order_date: order.order_date,
+            customer_name: order.customers?.name,
+            status: order.status,
+            item_id: row.item_id,
+            quantity: row.quantity,
+            serve_qty: row.serve_qty,
+            price: row.price,
+          };
+        })
+        .sort((a, b) => new Date(b.order_date).getTime() - new Date(a.order_date).getTime());
+    } catch (err) {
+      console.error('Failed to fetch served orders by item:', err);
+      throw new InternalServerErrorException('Cannot fetch served orders by item');
+    }
   }
 
   // ====================================================================================================================================

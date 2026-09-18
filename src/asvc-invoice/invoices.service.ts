@@ -57,6 +57,51 @@ export class InvoicesService {
     };
   }
 
+  // Sales Invoice History tab on a product's details page — every invoice
+  // line that ever shipped this item, distinct from Sales Order History
+  // (which lists the orders themselves, including ones not yet invoiced).
+  async get_item_invoice_history(itemId: number) {
+    try {
+      const { data, error } = await this.supabase.client
+        .from('sales_invoice_items')
+        .select(`
+          id,
+          quantity,
+          price,
+          return_qty,
+          sales_invoices!inner (
+            id,
+            invoice_number,
+            invoice_date,
+            order_id,
+            customers!inner ( name )
+          )
+        `)
+        .eq('item_id', itemId);
+
+      if (error) throw error;
+
+      return (data ?? [])
+        .map((row) => {
+          const invoice = row.sales_invoices as any;
+          return {
+            invoice_id: invoice.id,
+            invoice_number: invoice.invoice_number,
+            invoice_date: invoice.invoice_date,
+            order_id: invoice.order_id,
+            customer_name: invoice.customers?.name,
+            quantity: row.quantity,
+            return_qty: row.return_qty ?? 0,
+            price: row.price,
+          };
+        })
+        .sort((a, b) => new Date(b.invoice_date).getTime() - new Date(a.invoice_date).getTime());
+    } catch (err) {
+      console.error('Failed to fetch item invoice history:', err);
+      throw new InternalServerErrorException('Cannot fetch item invoice history');
+    }
+  }
+
   async get_latest_invoices() {
     try {
       const { data, error } = await this.supabase.client
