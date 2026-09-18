@@ -43,6 +43,13 @@ export class InvoicesController {
     return this.service.getReturnAll( page, limit, search );
   }
 
+  @Get('item/:itemId/history')
+  async get_item_invoice_history(
+    @Param('itemId', ParseIntPipe) itemId: number,
+  ) {
+    return this.service.get_item_invoice_history(itemId);
+  }
+
   @Get(':id')
   find(
     @Param('id') id: number
