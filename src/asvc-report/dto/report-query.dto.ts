@@ -24,14 +24,25 @@ export class PurchaseReportQueryDto extends ReportRangeDto {
   status?: string;
 }
 
+export class CustomerReportQueryDto extends ReportRangeDto {
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  limit?: number;
+}
+
+export class CustomerDetailQueryDto extends ReportRangeDto {}
+
 // "View full" detail list for one dashboard panel. The panel value also
 // says which report it belongs to (see DETAIL_PANELS in reports.service).
 export const DETAIL_PANEL_NAMES = [
   'best_selling',
   'top_customers',
   'slow_moving',
-  'sales_by_city',
   'pnl_by_brand',
+  'customers_by_city',
   'top_products',
   'top_suppliers',
 ] as const;

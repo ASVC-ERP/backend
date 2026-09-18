@@ -2,6 +2,7 @@ import {
   Injectable,
   InternalServerErrorException,
   BadRequestException,
+  NotFoundException,
 } from '@nestjs/common';
 import { Workbook } from 'exceljs';
 import { SupabaseService } from '../supabase/supabase.service';
@@ -45,14 +46,6 @@ export const DETAIL_PANELS = {
       { header: 'Days Ago', key: 'days_ago', width: 12 },
     ] as Col[],
   },
-  sales_by_city: {
-    report: 'sales' as const,
-    sheet: 'Sales by City',
-    cols: [
-      { header: 'City', key: 'city', width: 28 },
-      { header: 'Sales', key: 'total', width: 16, money: true },
-    ] as Col[],
-  },
   pnl_by_brand: {
     report: 'sales' as const,
     sheet: 'P&L by Brand',
@@ -61,6 +54,14 @@ export const DETAIL_PANELS = {
       { header: 'Revenue', key: 'revenue', width: 16, money: true },
       { header: 'Profit', key: 'profit', width: 16, money: true },
       { header: 'Margin %', key: 'margin_pct', width: 12 },
+    ] as Col[],
+  },
+  customers_by_city: {
+    report: 'customers' as const,
+    sheet: 'Revenue by City',
+    cols: [
+      { header: 'City', key: 'city', width: 28 },
+      { header: 'Revenue', key: 'total', width: 16, money: true },
     ] as Col[],
   },
   top_products: {
@@ -177,6 +178,47 @@ export class ReportsService {
     return cur;
   }
 
+  private async customerRpc(from: string, to: string, limit?: number) {
+    const args: Record<string, unknown> = { p_from: from, p_to: to };
+    if (limit != null) args.p_limit = limit;
+    const { data, error } = await this.supabase.client.rpc(
+      'report_customer_dashboard',
+      args,
+    );
+    if (error) throw new InternalServerErrorException(error.message);
+    return data;
+  }
+
+  async customerDashboard(from: string, to: string, limit?: number) {
+    const { prevFrom, prevTo } = this.previousRange(from, to);
+    const [cur, prev] = await Promise.all([
+      this.customerRpc(from, to, limit),
+      this.customerRpc(prevFrom, prevTo, limit),
+    ]);
+    cur.kpis_prev = prev?.kpis ?? null;
+    return cur;
+  }
+
+  private async customerDetailRpc(
+    customerId: number,
+    from: string,
+    to: string,
+  ) {
+    const { data, error } = await this.supabase.client.rpc(
+      'report_customer_detail',
+      { p_customer_id: customerId, p_from: from, p_to: to },
+    );
+    if (error) throw new InternalServerErrorException(error.message);
+    if (!data?.profile) {
+      throw new NotFoundException(`Customer ${customerId} not found`);
+    }
+    return data;
+  }
+
+  async customerDetail(customerId: number, from: string, to: string) {
+    return this.customerDetailRpc(customerId, from, to);
+  }
+
   // ---- "View full" detail lists -----------------------------------------
   // The full (un-truncated) rows for one dashboard panel.
 
@@ -186,7 +228,9 @@ export class ReportsService {
     const data =
       cfg.report === 'sales'
         ? await this.salesRpc(from, to, 90, BIG_LIMIT, BIG_LIMIT)
-        : await this.purchaseRpc(from, to, undefined, BIG_LIMIT);
+        : cfg.report === 'purchases'
+          ? await this.purchaseRpc(from, to, undefined, BIG_LIMIT)
+          : await this.customerRpc(from, to, BIG_LIMIT);
     return { panel, rows: data?.[panel] ?? [] };
   }
 
@@ -233,10 +277,6 @@ export class ReportsService {
     this.addSheet(wb, 'Top Customers', d.top_customers, [
       { header: 'Customer ID', key: 'customer_id', width: 12 },
       { header: 'Name', key: 'name', width: 32 },
-      { header: 'Sales', key: 'total', width: 16, money: true },
-    ]);
-    this.addSheet(wb, 'Sales by City', d.sales_by_city, [
-      { header: 'City', key: 'city', width: 28 },
       { header: 'Sales', key: 'total', width: 16, money: true },
     ]);
     this.addSheet(wb, 'P&L by Brand', d.pnl_by_brand, [
@@ -286,6 +326,97 @@ export class ReportsService {
     this.addSheet(wb, 'Top Suppliers', d.top_suppliers, [
       { header: 'Supplier ID', key: 'supplier_id', width: 12 },
       { header: 'Name', key: 'name', width: 32 },
+      { header: 'Total', key: 'total', width: 16, money: true },
+    ]);
+
+    return Buffer.from((await wb.xlsx.writeBuffer()) as ArrayBuffer);
+  }
+
+  async customerWorkbook(from: string, to: string, limit?: number) {
+    const d = await this.customerDashboard(from, to, limit);
+    const wb = this.newWorkbook();
+
+    const summary = wb.addWorksheet('Summary');
+    this.writeMeta(summary, 'Customer Report', from, to);
+    summary.addRow([]);
+    summary.addRow(['Metric', 'Value', 'Previous period', 'Change %']).font = {
+      bold: true,
+    };
+    const p = d.kpis_prev;
+    this.kpiRow(
+      summary,
+      'Active Customers',
+      d.kpis.active_customers,
+      p?.active_customers,
+    );
+    this.kpiRow(summary, 'Total Revenue', d.kpis.revenue, p?.revenue);
+    this.kpiRow(
+      summary,
+      'Avg Order Value',
+      d.kpis.avg_order_value,
+      p?.avg_order_value,
+    );
+    this.kpiRow(
+      summary,
+      'New Customers',
+      d.kpis.new_customers,
+      p?.new_customers,
+    );
+    summary.getColumn(1).width = 22;
+    summary.getColumn(2).width = 16;
+    summary.getColumn(3).width = 16;
+    summary.getColumn(4).width = 12;
+    summary.getColumn(2).numFmt = '#,##0.00';
+    summary.getColumn(3).numFmt = '#,##0.00';
+
+    this.addSheet(wb, 'Top Customers', d.top_customers, [
+      { header: 'Customer ID', key: 'customer_id', width: 12 },
+      { header: 'Name', key: 'name', width: 32 },
+      { header: 'City', key: 'city', width: 20 },
+      { header: 'Orders', key: 'total_orders', width: 10 },
+      { header: 'Revenue', key: 'total', width: 16, money: true },
+      { header: 'Avg Order Value', key: 'avg_order_value', width: 16, money: true },
+      { header: 'Margin %', key: 'margin_pct', width: 12 },
+    ]);
+    this.addSheet(wb, 'Customers by City', d.customers_by_city, [
+      { header: 'City', key: 'city', width: 28 },
+      { header: 'Revenue', key: 'total', width: 16, money: true },
+    ]);
+
+    return Buffer.from((await wb.xlsx.writeBuffer()) as ArrayBuffer);
+  }
+
+  async customerDetailWorkbook(customerId: number, from: string, to: string) {
+    const d = await this.customerDetailRpc(customerId, from, to);
+    const wb = this.newWorkbook();
+
+    const profile = wb.addWorksheet('Profile');
+    this.writeMeta(profile, d.profile.name || `Customer ${customerId}`, from, to);
+    profile.addRow([]);
+    profile.addRow(['City', d.profile.city || '']);
+    profile.addRow(['TIN', d.profile.tin || '']);
+    profile.addRow(['Terms', d.profile.terms || '']);
+    profile.addRow(['PIC', d.profile.pic || '']);
+    profile.addRow([]);
+    profile.addRow(['Metric', 'Value']).font = { bold: true };
+    profile.addRow(['Lifetime Revenue', d.kpis.lifetime_revenue]);
+    profile.addRow(['Total Orders', d.kpis.total_orders]);
+    profile.addRow(['Avg Order Value', d.kpis.avg_order_value]);
+    profile.addRow(['Gross Margin %', d.kpis.margin_pct]);
+    profile.getColumn(1).width = 22;
+    profile.getColumn(2).width = 24;
+
+    this.addSheet(wb, 'Top Products', d.top_products, [
+      { header: 'Item ID', key: 'item_id', width: 12 },
+      { header: 'Description', key: 'description', width: 36 },
+      { header: 'Brand', key: 'brand', width: 18 },
+      { header: 'Quantity', key: 'quantity', width: 12 },
+      { header: 'Revenue', key: 'total', width: 16, money: true },
+    ]);
+    this.addSheet(wb, 'Orders', d.orders, [
+      { header: 'Invoice #', key: 'invoice_number', width: 16 },
+      { header: 'Date', key: 'date', width: 14 },
+      { header: 'Items', key: 'items', width: 10 },
       { header: 'Total', key: 'total', width: 16, money: true },
     ]);
 

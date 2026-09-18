@@ -1,4 +1,4 @@
-import { Controller, Get, Query, Res } from '@nestjs/common';
+import { Controller, Get, Param, ParseIntPipe, Query, Res } from '@nestjs/common';
 import type { Response } from 'express';
 import { ReportsService } from './reports.service';
 import { Roles } from '../asvc-auth/roles.decorator';
@@ -6,6 +6,8 @@ import {
   SalesReportQueryDto,
   PurchaseReportQueryDto,
   ReportDetailQueryDto,
+  CustomerReportQueryDto,
+  CustomerDetailQueryDto,
 } from './dto/report-query.dto';
 
 const XLSX_MIME =
@@ -48,6 +50,48 @@ export class ReportsController {
       .set({
         'Content-Type': XLSX_MIME,
         'Content-Disposition': `attachment; filename="purchase-report_${q.from}_${q.to}.xlsx"`,
+      })
+      .end(buf);
+  }
+
+  @Get('customers')
+  customers(@Query() q: CustomerReportQueryDto) {
+    return this.service.customerDashboard(q.from, q.to, q.limit);
+  }
+
+  @Get('customers/export')
+  async customersExport(
+    @Query() q: CustomerReportQueryDto,
+    @Res() res: Response,
+  ) {
+    const buf = await this.service.customerWorkbook(q.from, q.to, q.limit);
+    res
+      .set({
+        'Content-Type': XLSX_MIME,
+        'Content-Disposition': `attachment; filename="customer-report_${q.from}_${q.to}.xlsx"`,
+      })
+      .end(buf);
+  }
+
+  @Get('customers/:id')
+  customerDetail(
+    @Param('id', ParseIntPipe) id: number,
+    @Query() q: CustomerDetailQueryDto,
+  ) {
+    return this.service.customerDetail(id, q.from, q.to);
+  }
+
+  @Get('customers/:id/export')
+  async customerDetailExport(
+    @Param('id', ParseIntPipe) id: number,
+    @Query() q: CustomerDetailQueryDto,
+    @Res() res: Response,
+  ) {
+    const buf = await this.service.customerDetailWorkbook(id, q.from, q.to);
+    res
+      .set({
+        'Content-Type': XLSX_MIME,
+        'Content-Disposition': `attachment; filename="customer-${id}_${q.from}_${q.to}.xlsx"`,
       })
       .end(buf);
   }
