@@ -2,15 +2,22 @@ import {
     Controller,
     Get,
     Param,
+    Query,
     Res,
   } from '@nestjs/common';
   import type { Response } from 'express';
   import PDFDocument = require('pdfkit');
   import { PrintService } from './asvc-print.service';
-  
+  import { DotMatrixInvoiceService } from './dot-matrix/dot-matrix-invoice.service';
+  import { PrinterTransportService } from './dot-matrix/printer-transport.service';
+
   @Controller('print')
   export class PrintController {
-    constructor(private readonly service: PrintService) {}
+    constructor(
+      private readonly service: PrintService,
+      private readonly dotMatrixService: DotMatrixInvoiceService,
+      private readonly printerTransport: PrinterTransportService,
+    ) {}
 
 // ===========================================================================
 //
@@ -76,6 +83,27 @@ import {
     ) {
         const data = await this.service.read_po(+id);
         this.generate_po(data, res);
+    }
+
+    // SALES INVOICE — DOT MATRIX
+    // Mode A fills a pre-printed form; Mode B lays out the full invoice on
+    // blank paper (masthead bitmap + forward-interleaved text — see
+    // dot-matrix-invoice.service.ts).
+    // API: /api/print/invoice/:id/dot-matrix?mode=form|full&printer=EPSON_LX310
+    // ===========================================================================
+    @Get('invoice/:id/dot-matrix')
+    async print_invoice_dm(
+        @Param('id') id: number,
+        @Query('mode') mode: 'form' | 'full' = 'form',
+        @Query('printer') printer: string,
+        @Res() res: Response,
+    ) {
+        const data = await this.service.read_invoice(+id);
+        const buffer = mode === 'full'
+            ? this.dotMatrixService.buildModeB(data)
+            : this.dotMatrixService.buildModeA(data);
+        await this.printerTransport.sendRaw(buffer, printer);
+        res.status(200).json({ printed: true, mode });
     }
 
 // ===========================================================================

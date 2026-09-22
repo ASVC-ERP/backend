@@ -4,6 +4,7 @@ import { SalesOrderType } from './type/so.type';
 import { PackingListType } from './type/pl.type';
 import { DeliveryReceiptType } from './type/dr.type';
 import { PurchaseOrderType } from './type/po.type';
+import { SalesInvoiceType } from './type/invoice.type';
 
 @Injectable()
 export class PrintService {
@@ -186,6 +187,69 @@ export class PrintService {
         price: item.unit_cost,
         unit: item.products?.unit ?? '',
         itemName: item.products?.item_name ?? '',
+      })),
+    };
+  }
+
+  // ------------------------------------------------------------------------------------------------------------------------------------
+  // Sales Invoice Get Function — dot-matrix invoice printing
+  // ------------------------------------------------------------------------------------------------------------------------------------
+  async read_invoice(id: number) {
+    const { data, error } = await this.service.client
+      .from('sales_invoices')
+      .select(`
+        id,
+        order_id,
+        invoice_number,
+        invoice_date,
+        total_price,
+        customers (
+          name,
+          address,
+          tin,
+          terms
+        ),
+        sales_invoice_items (
+          quantity,
+          price,
+          products (
+            item_code,
+            item_name,
+            unit
+          )
+        )
+      `)
+      .eq('id', id)
+      .single();
+
+    if (error) throw error;
+
+    const row = data as SalesInvoiceType;
+    const customer = row.customers;
+
+    return {
+      invoice_number: row.invoice_number ?? '',
+      date: row.invoice_date ?? '',
+      customerName: customer?.name ?? '',
+      customerAddress: customer?.address ?? '',
+      customerTIN: customer?.tin ?? '',
+      terms: customer?.terms ?? '',
+      order_id: row.order_id,
+
+      // Not yet on the sales_invoices schema — see the dot-matrix invoice guide, step 10.
+      poNumber: '',
+      modeOfPayment: '',
+      checkNo: '',
+      bankName: '',
+      projectId: '',
+
+      total_price: row.total_price ?? 0,
+      items: row.sales_invoice_items.map(item => ({
+        itemCode: item.products?.item_code ?? '',
+        itemName: item.products?.item_name ?? '',
+        unit: item.products?.unit ?? '',
+        quantity: item.quantity,
+        price: item.price,
       })),
     };
   }
