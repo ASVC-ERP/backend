@@ -1,14 +1,9 @@
-import { Injectable, BadRequestException, InternalServerErrorException } from '@nestjs/common';
-import { readFileSync } from 'fs';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { EscpBuilder } from './escp-builder';
-import { INVOICE_FIELD_MAP, INVOICE_LAYOUT_FULL } from './invoice-field-map';
-
-type MastheadMeta = {
-  widthDots: number;
-  heightDots: number;
-  lpi: number;
-  linesConsumed: number;
-};
+import { INVOICE_FIELD_MAP } from './invoice-field-map';
+import { decodeEscpToText } from './escp-preview';
+import { buildInvoiceSvg } from './invoice-svg-template';
+import { renderSvgToBitImage, renderSvgToPreviewPng } from './svg-to-bitimage';
 
 export type DotMatrixInvoiceData = {
   invoice_number: string;
@@ -37,8 +32,25 @@ export type DotMatrixInvoiceData = {
   }[];
 };
 
+export type DotMatrixPreview = { contentType: 'text/plain' | 'image/png'; body: string | Buffer };
+
 @Injectable()
 export class DotMatrixInvoiceService {
+  // Dry run: builds the exact same bytes buildModeA/buildModeB would send
+  // to a printer, but never touches a printer. Mode A is genuinely plain
+  // text, so its preview is decoded ESC/P text; Mode B is a dithered
+  // full-page image, so a text decode would be meaningless — its preview
+  // is the same dithered raster the printer would receive, as a PNG, so
+  // what you see here is what would actually print.
+  async preview(data: DotMatrixInvoiceData, mode: 'form' | 'full'): Promise<DotMatrixPreview> {
+    if (mode === 'full') {
+      const { svg, width, authorHeight } = buildInvoiceSvg(data);
+      const png = await renderSvgToPreviewPng(svg, width, authorHeight);
+      return { contentType: 'image/png', body: png };
+    }
+    return { contentType: 'text/plain', body: decodeEscpToText(this.buildModeA(data)) };
+  }
+
   // MODE A — fills a pre-printed form. No borders, no header, no logo:
   // the physical paper already has them.
   buildModeA(data: DotMatrixInvoiceData): Buffer {
@@ -151,193 +163,23 @@ export class DotMatrixInvoiceService {
     return b.build();
   }
 
-  // MODE B — full layout on blank paper. The masthead (title, logo,
-  // company block) is the one region that's a pre-baked bitmap — see
-  // escp-image.ts and scripts/build-invoice-masthead.js. Everything below
-  // it is plain ESC/P text, forward-interleaved with the variable data,
-  // because a dot-matrix printer can never feed paper backward to overlay
-  // text onto a region it already passed.
-  buildModeB(data: DotMatrixInvoiceData): Buffer {
-    const layout = INVOICE_LAYOUT_FULL;
-
-    if (data.items.length > layout.itemsMaxRows) {
-      throw new BadRequestException(
-        `Invoice has ${data.items.length} line items, but Mode B's single-page layout only fits ${layout.itemsMaxRows}. Continuation-page handling isn't built yet.`,
-      );
-    }
-
-    const masthead = this.loadMasthead();
-    if (masthead.meta.linesConsumed !== layout.headerLines) {
-      throw new InternalServerErrorException(
-        `invoice-masthead.meta.json reports ${masthead.meta.linesConsumed} lines, but INVOICE_LAYOUT_FULL.headerLines is ${layout.headerLines}. Rebuild the masthead or update the layout config — they drifted apart.`,
-      );
-    }
+  // MODE B — full layout on blank paper. Recreates invoice.jpg's actual
+  // layout (invoice-svg-template.ts) rather than approximating it with
+  // ASCII text, and prints the WHOLE page as one continuous bit-image
+  // pass (svg-to-bitimage.ts) — the only way to get pixel-accurate boxes,
+  // shading and logo placement on a dot-matrix printer, at the cost of
+  // graphics mode being much slower to print than plain text. The item
+  // table height grows with the item count instead of being fixed to
+  // whatever blank space a static pre-printed pad happens to have.
+  async buildModeB(data: DotMatrixInvoiceData): Promise<Buffer> {
+    const { svg, width, authorHeight } = buildInvoiceSvg(data);
+    const image = await renderSvgToBitImage(svg, width, authorHeight);
 
     const b = new EscpBuilder();
-    b.reset().pica().lpi6();
-    b.raw(masthead.buffer);
-
-    for (let i = 0; i < layout.blankLinesAfterMasthead; i++) b.lf();
-
-    const colRightChar = layout.colRight / 6;
-
-    // A short paired field (date, check no., bank name — normally a few
-    // characters) on each half of the line. Both sides are truncated to
-    // their cell width so a longer-than-expected value can never run into
-    // the other column or past the page edge.
-    const pairedLine = (leftLabel: string, leftValue: string, rightLabel?: string, rightValue?: string) => {
-      const leftMax = colRightChar - leftLabel.length - 1;
-      b.column(layout.colLeft).text(`${leftLabel} ${this.truncate(leftValue, Math.max(leftMax, 1))}`);
-      if (rightLabel) {
-        const rightMax = layout.pageWidthChars - colRightChar - rightLabel.length - 1;
-        b.column(layout.colRight).text(`${rightLabel} ${this.truncate(rightValue ?? '', Math.max(rightMax, 1))}`);
-      }
-      b.cr().lf();
-    };
-
-    // A full-width field whose value can genuinely run long (a business
-    // name, a street address) — wraps onto continuation lines indented
-    // under the label, instead of truncating real customer data.
-    const wrappedLine = (label: string, value: string) => {
-      const maxChars = Math.max(layout.pageWidthChars - label.length - 1, 10);
-      const lines = this.wrapText(value, maxChars);
-      b.column(layout.colLeft).text(`${label} ${lines[0]}`);
-      b.cr().lf();
-      const indent = ' '.repeat(label.length + 1);
-      for (let k = 1; k < lines.length; k++) {
-        b.column(layout.colLeft).text(indent + lines[k]);
-        b.cr().lf();
-      }
-    };
-
-    const blank = (count = 1) => {
-      for (let i = 0; i < count; i++) b.lf();
-    };
-
-    // ===== Header block =====
-    wrappedLine('Invoice #:', data.invoice_number);
-    wrappedLine('Sold To:', data.customerName);
-    wrappedLine('Registered Name:', data.customerName);
-    wrappedLine('Ship To Address:', data.customerAddress);
-    pairedLine('Date:', data.date, 'Mode of Payment:', data.modeOfPayment);
-    pairedLine('Client TIN:', data.customerTIN, 'Check No.:', data.checkNo);
-    pairedLine('PO #:', data.poNumber, 'Bank Name:', data.bankName);
-    pairedLine('Terms:', data.terms, 'Project ID:', data.projectId);
-
-    blank(layout.blankLinesBeforeTotals > 0 ? 1 : 0);
-
-    // ===== Item table =====
-    const cols = layout.itemsHeaderCols;
-    b.column(cols.no).text('No');
-    b.column(cols.code).text('Code');
-    b.column(cols.desc).text('Description');
-    b.column(cols.qty).text('Qty');
-    b.column(cols.unitPrice).text('Unit Price');
-    b.column(cols.amount).text('Amount');
-    b.cr().lf();
-    b.column(0).text('-'.repeat(layout.pageWidthChars));
-    b.cr().lf();
-
-    for (const [i, item] of data.items.entries()) {
-      const amount = item.quantity * item.price;
-      b.column(cols.no).text(String(i + 1));
-      b.column(cols.code).text(item.itemCode);
-      b.column(cols.desc).text(this.truncate(item.itemName, layout.itemDescMaxChars));
-      b.column(cols.qty).text(String(item.quantity));
-      b.column(cols.unitPrice).text(item.price.toFixed(2));
-      b.column(cols.amount).text(amount.toFixed(2));
-      b.cr().lf();
-    }
-
-    // ===== Totals =====
-    const { netTotal, vatableSales, vat } = this.computeTotals(data.items);
-    const withholding = 0; // schema gap — see DotMatrixInvoiceData comment
-    const amountDue = vatableSales - withholding;
-
-    blank(layout.blankLinesBeforeTotals);
-    pairedLine('Total Sales (VAT Inclusive):', netTotal.toFixed(2));
-    pairedLine('Less: VAT:', vat.toFixed(2));
-    pairedLine('Amount Net of VAT:', vatableSales.toFixed(2));
-    pairedLine('Less: Withholding Tax:', withholding.toFixed(2));
-    pairedLine('Amount Due:', amountDue.toFixed(2));
-    pairedLine('Add: VAT:', vat.toFixed(2));
-    pairedLine('Vatable Sales:', vatableSales.toFixed(2));
-    pairedLine('VAT-Exempt Sales:', (0).toFixed(2));
-    pairedLine('VAT Zero-Rated Sales:', (0).toFixed(2));
-    pairedLine('VAT Amount:', vat.toFixed(2));
-
-    // ===== Terms & signature =====
-    blank(layout.blankLinesBeforeTerms);
-    for (const row of layout.termsAndConditions) {
-      b.column(layout.colLeft).text(row);
-      b.cr().lf();
-    }
-
-    blank(layout.blankLinesBeforeSignature);
-    b.column(layout.colLeft).text('Checked and received the above items/goods in good order and condition.');
-    b.cr().lf();
-    // Sized to fit their cells outright rather than relying on truncation —
-    // an ellipsis mid-blank on a signature line would look like a bug.
-    pairedLine('Signature:', '_'.repeat(30), 'Printed Name:', '_'.repeat(15));
-    pairedLine('Date:', '_'.repeat(20));
-
-    // ===== Compliance footer — see INVOICE_LAYOUT_FULL for why this is a
-    // placeholder rather than real numbers. =====
-    blank(layout.blankLinesBeforeFooter);
-    b.column(layout.colLeft).text(layout.complianceFooterPlaceholder);
-    b.cr().lf();
-
+    b.reset().pica();
+    b.raw(image);
     b.formFeed();
     return b.build();
-  }
-
-  private mastheadCache?: { buffer: Buffer; meta: MastheadMeta };
-
-  private loadMasthead() {
-    if (this.mastheadCache) return this.mastheadCache;
-
-    try {
-      const buffer = readFileSync('assets/dot-matrix/invoice-masthead.bin');
-      const meta = JSON.parse(
-        readFileSync('assets/dot-matrix/invoice-masthead.meta.json', 'utf8'),
-      ) as MastheadMeta;
-      this.mastheadCache = { buffer, meta };
-      return this.mastheadCache;
-    } catch {
-      throw new InternalServerErrorException(
-        'Mode B masthead artwork is missing. Run `node scripts/build-invoice-masthead.js` from ims-backend/ to generate assets/dot-matrix/invoice-masthead.bin first.',
-      );
-    }
-  }
-
-  // ESC/P text is single-byte ASCII/codepage, not UTF-8 — a Unicode
-  // ellipsis (…) here would encode as garbage on the printer, so this uses
-  // three plain dots instead.
-  private truncate(s: string, maxChars: number): string {
-    if (s.length <= maxChars) return s;
-    if (maxChars <= 3) return s.slice(0, maxChars);
-    return s.slice(0, maxChars - 3) + '...';
-  }
-
-  // Word-wraps to a max line width, hard-breaking any single word longer
-  // than the width so a run of characters with no spaces can't overflow.
-  private wrapText(s: string, maxChars: number): string[] {
-    const words = s.split(' ').filter(Boolean);
-    const lines: string[] = [];
-    let current = '';
-
-    for (const word of words) {
-      const candidate = current ? `${current} ${word}` : word;
-      if (candidate.length <= maxChars) {
-        current = candidate;
-        continue;
-      }
-      if (current) lines.push(current);
-      current = word.length > maxChars ? word.slice(0, maxChars) : word;
-    }
-    if (current) lines.push(current);
-
-    return lines.length > 0 ? lines : [''];
   }
 
   // Same VAT math as PrintController.computeTotals for PO/DR — all items

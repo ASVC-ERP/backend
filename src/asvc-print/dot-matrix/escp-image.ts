@@ -1,12 +1,9 @@
 import { EscpBuilder } from './escp-builder';
 
 // ESC/P 24-dot double-density bit image (ESC * 33), the standard way to put
-// a graphic — here, the invoice masthead's logo + title — on an ESC/P
-// dot-matrix printer. Bands of 24 vertical dots are printed at 1/180"
-// spacing; there is no reverse line feed on plain-paper impact printers, so
-// this can only ever be used for content nothing else prints over later —
-// see the note in dot-matrix-invoice.service.ts on why that limits it to
-// the masthead, not a full-page background.
+// a graphic on an ESC/P dot-matrix printer. Bands of 24 vertical dots are
+// printed at 1/180" spacing. Mode B (dot-matrix-invoice.service.ts) uses
+// this for the entire invoice page — see svg-to-bitimage.ts.
 
 export const BIT_IMAGE_BAND_DOTS = 24;
 export const BIT_IMAGE_DOT_UNIT_INCH = 1 / 180;
@@ -51,12 +48,4 @@ export function encodeBitImage(bitmap: MonoBitmap): Buffer {
   }
 
   return b.build();
-}
-
-// How many whole text lines (at the given lpi) a bitmap of this height
-// occupies, rounded up — the caller uses this to land the cursor back on a
-// clean line boundary before switching to text-based field output.
-export function linesConsumed(heightDots: number, lpi: number): number {
-  const dotsPerLine = 180 / lpi;
-  return Math.ceil(heightDots / dotsPerLine);
 }
