@@ -1,0 +1,1 @@
+import{j as s}from"./index-H1AO5HWE.js";import{L as f}from"./router-0wiLXLL1.js";function n({report:r,panel:t,range:o,to:e}){const i=e??`/reports/${r}/${t}?from=${o.from}&to=${o.to}`;return s.jsx(f,{to:i,className:"report-viewfull",children:"View full →"})}export{n as V};

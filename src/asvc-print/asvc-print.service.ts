@@ -242,6 +242,7 @@ export class PrintService {
       checkNo: '',
       bankName: '',
       projectId: '',
+      salesType: '',
 
       total_price: row.total_price ?? 0,
       items: row.sales_invoice_items.map(item => ({
