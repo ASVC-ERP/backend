@@ -8,15 +8,11 @@ import {
   import type { Response } from 'express';
   import PDFDocument = require('pdfkit');
   import { PrintService } from './asvc-print.service';
-  import { DotMatrixInvoiceService } from './dot-matrix/dot-matrix-invoice.service';
-  import { PrinterTransportService } from './dot-matrix/printer-transport.service';
 
   @Controller('print')
   export class PrintController {
     constructor(
       private readonly service: PrintService,
-      private readonly dotMatrixService: DotMatrixInvoiceService,
-      private readonly printerTransport: PrinterTransportService,
     ) {}
 
 // ===========================================================================
@@ -117,45 +113,6 @@ import {
     ) {
         const data = await this.service.read_po(+id);
         this.generate_po(data, res);
-    }
-
-    // SALES INVOICE — DOT MATRIX PREVIEW
-    // Dry run: never touches a printer. Mode A is plain text, so its
-    // preview is decoded ESC/P text; Mode B is a dithered full-page image
-    // (see invoice-svg-template.ts), so its preview is that same dithered
-    // raster as a PNG — what you see here is what would actually print.
-    // API: /api/print/invoice/:id/dot-matrix/preview?mode=form|full
-    // ===========================================================================
-    @Get('invoice/:id/dot-matrix/preview')
-    async preview_invoice_dm(
-        @Param('id') id: number,
-        @Query('mode') mode: 'form' | 'full' = 'form',
-        @Res() res: Response,
-    ) {
-        const data = await this.service.read_invoice(+id);
-        const { contentType, body } = await this.dotMatrixService.preview(data, mode);
-        res.type(contentType).send(body);
-    }
-
-    // SALES INVOICE — DOT MATRIX
-    // Mode A fills a pre-printed form; Mode B recreates invoice.jpg's
-    // layout as one full-page graphic (see invoice-svg-template.ts and
-    // dot-matrix-invoice.service.ts).
-    // API: /api/print/invoice/:id/dot-matrix?mode=form|full&printer=EPSON_LX310
-    // ===========================================================================
-    @Get('invoice/:id/dot-matrix')
-    async print_invoice_dm(
-        @Param('id') id: number,
-        @Query('mode') mode: 'form' | 'full' = 'form',
-        @Query('printer') printer: string,
-        @Res() res: Response,
-    ) {
-        const data = await this.service.read_invoice(+id);
-        const buffer = mode === 'full'
-            ? await this.dotMatrixService.buildModeB(data)
-            : this.dotMatrixService.buildModeA(data);
-        await this.printerTransport.sendRaw(buffer, printer);
-        res.status(200).json({ printed: true, mode });
     }
 
 // ===========================================================================
