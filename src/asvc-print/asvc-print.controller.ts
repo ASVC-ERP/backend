@@ -596,7 +596,10 @@ import {
         const amount = item.quantity * item.price;
         const qtyLabel = item.unit ? `${item.quantity} ${item.unit}` : String(item.quantity);
         const ry = L.tableBodyTop + i * L.itemRowH;
-        doc.text(item.itemName, descX + 2, ry, { width: descW - 4 });
+        // height:itemRowH + ellipsis lets PDFKit truncate at the real
+        // glyph width instead of a guessed character count, so it always
+        // fits the row's fixed height regardless of the name's font.
+        doc.text(item.itemName, descX + 2, ry, { width: descW - 4, height: L.itemRowH, ellipsis: true });
         doc.text(qtyLabel, qtyX, ry, { width: qtyW - 4, align: 'right' });
         doc.text(fmt(item.price), priceX, ry, { width: priceW - 4, align: 'right' });
         doc.text(fmt(amount), amtX, ry, { width: amtW - 4, align: 'right' });
@@ -1072,7 +1075,10 @@ import {
         const amount = item.quantity * item.price;
         const qtyLabel = item.unit ? `${item.quantity} ${item.unit}` : String(item.quantity);
         const ry = L.tableBodyTop + i * L.itemRowH;
-        doc.text(item.itemName, descX + 2, ry, { width: descW - 4 });
+        // height:itemRowH + ellipsis lets PDFKit truncate at the real
+        // glyph width instead of a guessed character count, so it always
+        // fits the row's fixed height regardless of the name's font.
+        doc.text(item.itemName, descX + 2, ry, { width: descW - 4, height: L.itemRowH, ellipsis: true });
         doc.text(qtyLabel, qtyX, ry, { width: qtyW - 4, align: 'right' });
         doc.text(fmt(item.price), priceX, ry, { width: priceW - 4, align: 'right' });
         doc.text(fmt(amount), amtX, ry, { width: amtW - 4, align: 'right' });
