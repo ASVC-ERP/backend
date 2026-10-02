@@ -9,11 +9,14 @@ import {
 const INTERACTIONS_URL = 'https://generativelanguage.googleapis.com/v1beta/interactions';
 
 const PRIMARY_MODEL = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
-const FALLBACK_MODEL = 'gemini-2.5-flash';
+// gemini-2.5-flash is closed to new API keys as of Sep 2026; flash-lite is
+// the stable, new-user-accessible 3.x model, so it's the safer fallback.
+const FALLBACK_MODEL = 'gemini-3.5-flash-lite';
 
-// Thrown only for "model is overloaded, try again" responses -- the one
-// case worth retrying against a different model rather than surfacing.
-class GeminiOverloadedError extends Error {}
+// Thrown for responses worth retrying against a different model: the
+// primary is overloaded, or (as Google periodically restricts older models)
+// no longer available to this API key.
+class GeminiUnavailableError extends Error {}
 
 @Injectable()
 export class GeminiService {
@@ -43,7 +46,7 @@ export class GeminiService {
     try {
       return await this.callModel(PRIMARY_MODEL, prompt, apiKey);
     } catch (err) {
-      if (!(err instanceof GeminiOverloadedError) || PRIMARY_MODEL === FALLBACK_MODEL) {
+      if (!(err instanceof GeminiUnavailableError) || PRIMARY_MODEL === FALLBACK_MODEL) {
         throw err;
       }
       // Primary model is temporarily overloaded -- fall back once rather
@@ -74,8 +77,12 @@ export class GeminiService {
       if (!res.ok) {
         const message: string =
           body?.error?.message || `Gemini request failed (${res.status})`;
-        if (res.status === 503 || /overload|unavailable/i.test(message)) {
-          throw new GeminiOverloadedError(message);
+        if (
+          res.status === 503 ||
+          res.status === 404 ||
+          /overload|unavailable|no longer available/i.test(message)
+        ) {
+          throw new GeminiUnavailableError(message);
         }
         throw new InternalServerErrorException(message);
       }
@@ -97,7 +104,7 @@ export class GeminiService {
       return text.trim();
     } catch (err) {
       if (
-        err instanceof GeminiOverloadedError ||
+        err instanceof GeminiUnavailableError ||
         err instanceof BadRequestException ||
         err instanceof InternalServerErrorException
       ) {
