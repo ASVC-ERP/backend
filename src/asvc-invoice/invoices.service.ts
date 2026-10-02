@@ -28,33 +28,94 @@ export class InvoicesService {
     limit = Math.min(limit, 500);
     const from = (page - 1) * limit;
     const to = from + limit - 1;
-  
-    let query = this.supabase.client
-      .from(this.table)
-      .select(`
-          *,
-          customer:customers!sales_invoices_cid_fkey!inner ( id, name, address ),
-          user:users!sales_invoices_sales_agent_fkey!inner ( id, name, role )
-        `, { count: 'exact' })
-      .order("waybill_number", { ascending: true, nullsFirst: true })
-      .order("id", { ascending: false });
 
-    if (search && search.trim()) {
-      const sanitized = search.replace(/'/g, "''");
-      const isNumeric = !isNaN(Number(search));
-      if (isNumeric) {
-        query = query.or( `order_id.eq.${Number(search)}` );
-      } else {
-        query = query.ilike('customer.name', `%${sanitized}%`);
+    const select = `
+        *,
+        customer:customers!sales_invoices_cid_fkey!inner ( id, name, address ),
+        user:users!sales_invoices_sales_agent_fkey!inner ( id, name, role )
+      `;
+
+    // Invoices without a waybill number are always shown as a block above
+    // the ones that have one; within each of those two blocks, invoices are
+    // sorted by date, latest first. A plain multi-column .order() can't
+    // express "group by presence of waybill_number" (it would sort the
+    // second block by the waybill value itself), so the two groups are
+    // queried, counted and paginated separately, then concatenated.
+    const applyFilters = (q: any) => {
+      if (search && search.trim()) {
+        const sanitized = search.replace(/'/g, "''");
+        const isNumeric = !isNaN(Number(search));
+        if (isNumeric) {
+          return q.or(`order_id.eq.${Number(search)}`);
+        }
+        return q.ilike('customer.name', `%${sanitized}%`);
       }
+      return q;
+    };
+
+    // "No waybill" means NULL or an empty string — the column is never
+    // actually NULL in practice, missing waybills are stored as "".
+    const noWaybillCountQuery = applyFilters(
+      this.supabase.client
+        .from(this.table)
+        .select(select, { count: 'exact', head: true })
+        .or('waybill_number.is.null,waybill_number.eq.'),
+    );
+    const withWaybillCountQuery = applyFilters(
+      this.supabase.client
+        .from(this.table)
+        .select(select, { count: 'exact', head: true })
+        .not('waybill_number', 'is', null)
+        .neq('waybill_number', ''),
+    );
+
+    const [noWaybillCountRes, withWaybillCountRes] = await Promise.all([
+      noWaybillCountQuery,
+      withWaybillCountQuery,
+    ]);
+    if (noWaybillCountRes.error) throw new InternalServerErrorException(noWaybillCountRes.error.message);
+    if (withWaybillCountRes.error) throw new InternalServerErrorException(withWaybillCountRes.error.message);
+
+    const noWaybillCount = noWaybillCountRes.count ?? 0;
+    const total = noWaybillCount + (withWaybillCountRes.count ?? 0);
+
+    const data: any[] = [];
+
+    if (from < noWaybillCount) {
+      const q = applyFilters(
+        this.supabase.client
+          .from(this.table)
+          .select(select)
+          .or('waybill_number.is.null,waybill_number.eq.')
+          .order('invoice_date', { ascending: false })
+          .order('id', { ascending: false }),
+      );
+      const { data: noWaybillData, error } = await q.range(from, Math.min(to, noWaybillCount - 1));
+      if (error) throw new InternalServerErrorException(error.message);
+      data.push(...(noWaybillData ?? []));
     }
-  
-    const { data, error, count } = await query.range(from, to);
-    if (error) throw new InternalServerErrorException(error.message);
-  
+
+    if (to >= noWaybillCount) {
+      const q = applyFilters(
+        this.supabase.client
+          .from(this.table)
+          .select(select)
+          .not('waybill_number', 'is', null)
+          .neq('waybill_number', '')
+          .order('invoice_date', { ascending: false })
+          .order('id', { ascending: false }),
+      );
+      const { data: withWaybillData, error } = await q.range(
+        Math.max(from, noWaybillCount) - noWaybillCount,
+        to - noWaybillCount,
+      );
+      if (error) throw new InternalServerErrorException(error.message);
+      data.push(...(withWaybillData ?? []));
+    }
+
     return {
       data,
-      meta: { page, limit, total: count ?? 0, totalPages: Math.ceil((count ?? 0) / limit), },
+      meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
     };
   }
 
