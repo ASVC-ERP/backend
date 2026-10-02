@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { Workbook } from 'exceljs';
 import { SupabaseService } from '../supabase/supabase.service';
+import { GeminiService } from '../asvc-ai/gemini.service';
 
 // Column spec for a sheet: header label + a getter off each row object.
 type Col = { header: string; key: string; width?: number; money?: boolean };
@@ -98,7 +99,10 @@ const BIG_LIMIT = 100000;
 
 @Injectable()
 export class ReportsService {
-  constructor(private readonly supabase: SupabaseService) {}
+  constructor(
+    private readonly supabase: SupabaseService,
+    private readonly ai: GeminiService,
+  ) {}
 
   // The equal-length window immediately before [from, to].
   private previousRange(from: string, to: string) {
@@ -184,6 +188,62 @@ export class ReportsService {
     ]);
     cur.kpis_prev = prev?.kpis ?? null;
     return cur;
+  }
+
+  // ---- AI insights (Gemini) ----------------------------------------------
+  // A dashboard's numbers go to a third-party model, so every customer- or
+  // supplier-identifying field is replaced with a generic rank before it
+  // leaves the server. Only aggregates, product info, and ranks go out.
+
+  private anonymizeRanked<T extends Record<string, unknown>>(
+    rows: T[] | null | undefined,
+    idKey: keyof T,
+    nameKey: keyof T = 'name' as keyof T,
+  ) {
+    return (rows ?? []).map((r, i) => {
+      const { [idKey]: _id, [nameKey]: _name, ...rest } = r;
+      return { rank: i + 1, ...rest };
+    });
+  }
+
+  private sanitizeSalesForAi(d: any) {
+    return {
+      kpis: d.kpis,
+      kpis_prev: d.kpis_prev,
+      best_selling: (d.best_selling ?? []).map(
+        ({ product_id, ...rest }: any) => rest,
+      ),
+      top_customers: this.anonymizeRanked(d.top_customers, 'customer_id'),
+      pnl_by_brand: d.pnl_by_brand,
+      slow_moving: (d.slow_moving ?? []).map(
+        ({ product_id, last_order_id, ...rest }: any) => rest,
+      ),
+    };
+  }
+
+  private sanitizePurchasesForAi(d: any) {
+    return {
+      kpis: d.kpis,
+      kpis_prev: d.kpis_prev,
+      top_products: (d.top_products ?? []).map(
+        ({ product_id, ...rest }: any) => rest,
+      ),
+      top_suppliers: this.anonymizeRanked(d.top_suppliers, 'supplier_id'),
+    };
+  }
+
+  async salesInsights(from: string, to: string, slowDays?: number) {
+    const d = await this.salesDashboard(from, to, slowDays);
+    const data_sent = this.sanitizeSalesForAi(d);
+    const insights = await this.ai.analyzeReport('sales', data_sent);
+    return { range: { from, to }, data_sent, insights };
+  }
+
+  async purchaseInsights(from: string, to: string, status?: string) {
+    const d = await this.purchaseDashboard(from, to, status);
+    const data_sent = this.sanitizePurchasesForAi(d);
+    const insights = await this.ai.analyzeReport('purchases', data_sent);
+    return { range: { from, to }, data_sent, insights };
   }
 
   private async customerRpc(from: string, to: string, limit?: number) {

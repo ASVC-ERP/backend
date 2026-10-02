@@ -42,6 +42,18 @@ export class ReportsController {
     return this.service.purchaseDashboard(q.from, q.to, q.status);
   }
 
+  // AI analysis of the dashboard's numbers (names/addresses stripped before
+  // anything leaves the server -- see ReportsService.sanitize*ForAi).
+  @Get('sales/insights')
+  salesInsights(@Query() q: SalesReportQueryDto) {
+    return this.service.salesInsights(q.from, q.to, q.slowDays);
+  }
+
+  @Get('purchases/insights')
+  purchaseInsights(@Query() q: PurchaseReportQueryDto) {
+    return this.service.purchaseInsights(q.from, q.to, q.status);
+  }
+
   @Get('purchases/export')
   async purchasesExport(
     @Query() q: PurchaseReportQueryDto,
