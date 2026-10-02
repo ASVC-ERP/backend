@@ -18,6 +18,7 @@ import { UpdateProductDto } from './dto/update-product.dto';
 import { AdjustStockDto } from './dto/adjust-stock.dto';
 import { AdjustPriceDto } from './dto/adjust-price.dto';
 import { AdjustCostDto } from './dto/adjust-cost.dto';
+import { UpdateProductStatusDto } from './dto/update-product-status.dto';
 
 @Controller('product')
 export class ProductController {
@@ -33,18 +34,24 @@ export class ProductController {
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(100), ParseIntPipe) limit: number,
     @Query('search') search?: string,
-    @Query('stock') stockStatus?: string
+    @Query('stock') stockStatus?: string,
+    @Query('status') status?: string,
   ) {
 
     let normalizedStock: 'in' | 'out' | undefined;
-    if (stockStatus === 'in' || stockStatus === 'out') { normalizedStock = stockStatus;} 
+    if (stockStatus === 'in' || stockStatus === 'out') { normalizedStock = stockStatus;}
     else { normalizedStock = undefined; /* handles "", undefined, invalid */ }
+
+    let normalizedStatus: 'active' | 'inactive' | undefined;
+    if (status === 'active' || status === 'inactive') { normalizedStatus = status; }
+    else { normalizedStatus = undefined; /* handles "", undefined, invalid */ }
 
     return this.service.find_by_page(
       page,
       limit,
       search?.trim() || undefined,
       normalizedStock,
+      normalizedStatus,
     );
   }
 
@@ -90,6 +97,14 @@ export class ProductController {
     @Body() dto: AdjustStockDto,
   ) {
     return this.service.adjust_stock(id, dto);
+  }
+
+  @Patch(':id/status')
+  update_status(
+    @Param('id') id: string,
+    @Body() dto: UpdateProductStatusDto,
+  ) {
+    return this.service.update_status(+id, dto);
   }
 
   @Patch(':id/price')

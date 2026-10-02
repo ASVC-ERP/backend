@@ -5,6 +5,7 @@ import { UpdateProductDto } from './dto/update-product.dto';
 import { AdjustStockDto } from './dto/adjust-stock.dto';
 import { AdjustPriceDto } from './dto/adjust-price.dto';
 import { AdjustCostDto } from './dto/adjust-cost.dto';
+import { UpdateProductStatusDto } from './dto/update-product-status.dto';
 
 @Injectable()
 export class ProductService {
@@ -25,10 +26,11 @@ export class ProductService {
   // READ
   // cannot do a find all function due to limit of 1000 rows only, must be seperated by pages
   async find_by_page(
-    page = 1, 
+    page = 1,
     limit = 100,
     search?: string,
-    stockStatus?: 'in' | 'out'
+    stockStatus?: 'in' | 'out',
+    status?: 'active' | 'inactive',
   ) {
     limit = Math.min(limit, 1000);
     const from = (page - 1) * limit;
@@ -52,6 +54,10 @@ export class ProductService {
       query = query.gte('stock', 1);
     } else if (stockStatus === 'out') {
       query = query.eq('stock', 0);
+    }
+
+    if (status === 'active' || status === 'inactive') {
+      query = query.eq('status', status);
     }
 
     const { data, error, count } = await query.range(from, to);
@@ -208,6 +214,18 @@ export class ProductService {
       .single();
   
     if (error || !data) throw new NotFoundException('Cannot adjust price');
+    return data;
+  }
+
+  async update_status(id: number, dto: UpdateProductStatusDto) {
+    const { data, error } = await this.supabase.client
+      .from('products')
+      .update({ status: dto.status })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error || !data) throw new NotFoundException('Cannot update product status');
     return data;
   }
 
