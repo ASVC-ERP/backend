@@ -1,0 +1,1 @@
+import{G as n}from"./index-CFdwiMR6.js";function r(o){return n({attr:{viewBox:"0 0 512 512"},child:[{tag:"path",attr:{fill:"none",strokeLinecap:"round",strokeLinejoin:"round",strokeWidth:"48",d:"m112 184 144 144 144-144"},child:[]}]})(o)}export{r as I};
