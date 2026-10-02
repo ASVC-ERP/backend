@@ -45,10 +45,8 @@ export const DETAIL_PANELS = {
     cols: [
       { header: 'Code', key: 'item_code', width: 14 },
       { header: 'Description', key: 'description', width: 40 },
-      { header: 'Status', key: 'status', width: 12 },
       { header: 'Last Sold', key: 'last_sold', width: 14 },
       { header: 'Last Order ID', key: 'last_order_id', width: 14 },
-      { header: 'Last Purchased', key: 'last_purchased', width: 14 },
       { header: 'Days Ago', key: 'days_ago', width: 12 },
     ] as Col[],
   },
