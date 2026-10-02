@@ -4,12 +4,13 @@ import {
   InternalServerErrorException,
 } from '@nestjs/common';
 
-const geminiUrl = (model: string) =>
-  `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+// generateContent is legacy; new projects use the Interactions API.
+// https://ai.google.dev/gemini-api/docs/interactions-overview
+const INTERACTIONS_URL = 'https://generativelanguage.googleapis.com/v1beta/interactions';
 
 @Injectable()
 export class GeminiService {
-  private readonly model = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+  private readonly model = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
 
   // Turns one already-sanitized report payload into a short business-analysis
   // prompt and runs it through Gemini's free-tier API. Callers must strip
@@ -37,10 +38,13 @@ export class GeminiService {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 30000);
     try {
-      const res = await fetch(`${geminiUrl(this.model)}?key=${apiKey}`, {
+      const res = await fetch(INTERACTIONS_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': apiKey,
+        },
+        body: JSON.stringify({ model: this.model, input: prompt }),
         signal: controller.signal,
       });
 
@@ -51,9 +55,16 @@ export class GeminiService {
         );
       }
 
+      // Response is a "steps" timeline (e.g. a thought step, then the
+      // model_output step) rather than generateContent's candidates array.
+      const outputStep = (body?.steps ?? []).find(
+        (s: { type?: string }) => s.type === 'model_output',
+      );
       const text: string =
-        body?.candidates?.[0]?.content?.parts
-          ?.map((p: { text?: string }) => p.text ?? '')
+        outputStep?.content
+          ?.map((p: { type?: string; text?: string }) =>
+            p.type === 'text' ? (p.text ?? '') : '',
+          )
           .join('') ?? '';
       if (!text) {
         throw new InternalServerErrorException('Gemini returned an empty response.');
