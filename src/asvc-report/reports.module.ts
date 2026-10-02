@@ -3,9 +3,10 @@ import { ReportsService } from './reports.service';
 import { ReportsController } from './reports.controller';
 import { SupabaseModule } from '../supabase/supabase.module';
 import { AiModule } from '../asvc-ai/ai.module';
+import { AuditModule } from '../audit/audit.module';
 
 @Module({
-  imports: [SupabaseModule, AiModule],
+  imports: [SupabaseModule, AiModule, AuditModule],
   providers: [ReportsService],
   controllers: [ReportsController],
 })
