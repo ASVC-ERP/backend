@@ -1,4 +1,13 @@
-import { Controller, Get, Param, ParseIntPipe, Query, Res } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Param,
+  ParseIntPipe,
+  Post,
+  Query,
+  Req,
+  Res,
+} from '@nestjs/common';
 import type { Response } from 'express';
 import { ReportsService } from './reports.service';
 import { Roles } from '../asvc-auth/roles.decorator';
@@ -43,15 +52,27 @@ export class ReportsController {
   }
 
   // AI analysis of the dashboard's numbers (names/addresses stripped before
-  // anything leaves the server -- see ReportsService.sanitize*ForAi).
+  // anything leaves the server -- see ReportsService.sanitize*ForAi). GET
+  // only reads the last cached result (no Gemini call, so safe on page
+  // load); POST actually generates and overwrites the cache.
   @Get('sales/insights')
-  salesInsights(@Query() q: SalesReportQueryDto) {
-    return this.service.salesInsights(q.from, q.to, q.slowDays);
+  getSalesInsights(@Query() q: SalesReportQueryDto) {
+    return this.service.getCachedInsights('sales', q.from, q.to);
+  }
+
+  @Post('sales/insights')
+  salesInsights(@Query() q: SalesReportQueryDto, @Req() req) {
+    return this.service.salesInsights(q.from, q.to, q.slowDays, req.user?.userId);
   }
 
   @Get('purchases/insights')
-  purchaseInsights(@Query() q: PurchaseReportQueryDto) {
-    return this.service.purchaseInsights(q.from, q.to, q.status);
+  getPurchaseInsights(@Query() q: PurchaseReportQueryDto) {
+    return this.service.getCachedInsights('purchases', q.from, q.to);
+  }
+
+  @Post('purchases/insights')
+  purchaseInsights(@Query() q: PurchaseReportQueryDto, @Req() req) {
+    return this.service.purchaseInsights(q.from, q.to, q.status, req.user?.userId);
   }
 
   @Get('purchases/export')

@@ -232,18 +232,89 @@ export class ReportsService {
     };
   }
 
-  async salesInsights(from: string, to: string, slowDays?: number) {
+  // The cached row for a report_type + range, if one was generated before --
+  // lets the page show the last analysis (and when it ran) after a refresh
+  // instead of an empty panel, with no Gemini call.
+  async getCachedInsights(reportType: 'sales' | 'purchases', from: string, to: string) {
+    const { data, error } = await this.supabase.client
+      .from('report_ai_insights')
+      .select('insights, data_sent, generated_at')
+      .eq('report_type', reportType)
+      .eq('range_from', from)
+      .eq('range_to', to)
+      .maybeSingle();
+
+    if (error) throw new InternalServerErrorException(error.message);
+    return data;
+  }
+
+  private async saveInsightsCache(
+    reportType: 'sales' | 'purchases',
+    from: string,
+    to: string,
+    data_sent: unknown,
+    insights: string,
+    generatedBy?: number,
+  ) {
+    const { data, error } = await this.supabase.client
+      .from('report_ai_insights')
+      .upsert(
+        {
+          report_type: reportType,
+          range_from: from,
+          range_to: to,
+          data_sent,
+          insights,
+          generated_by: generatedBy ?? null,
+          generated_at: new Date().toISOString(),
+        },
+        { onConflict: 'report_type,range_from,range_to' },
+      )
+      .select('generated_at')
+      .single();
+
+    if (error) throw new InternalServerErrorException(error.message);
+    return data.generated_at;
+  }
+
+  async salesInsights(
+    from: string,
+    to: string,
+    slowDays?: number,
+    generatedBy?: number,
+  ) {
     const d = await this.salesDashboard(from, to, slowDays);
     const data_sent = this.sanitizeSalesForAi(d);
     const insights = await this.ai.analyzeReport('sales', data_sent);
-    return { range: { from, to }, data_sent, insights };
+    const generated_at = await this.saveInsightsCache(
+      'sales',
+      from,
+      to,
+      data_sent,
+      insights,
+      generatedBy,
+    );
+    return { range: { from, to }, data_sent, insights, generated_at };
   }
 
-  async purchaseInsights(from: string, to: string, status?: string) {
+  async purchaseInsights(
+    from: string,
+    to: string,
+    status?: string,
+    generatedBy?: number,
+  ) {
     const d = await this.purchaseDashboard(from, to, status);
     const data_sent = this.sanitizePurchasesForAi(d);
     const insights = await this.ai.analyzeReport('purchases', data_sent);
-    return { range: { from, to }, data_sent, insights };
+    const generated_at = await this.saveInsightsCache(
+      'purchases',
+      from,
+      to,
+      data_sent,
+      insights,
+      generatedBy,
+    );
+    return { range: { from, to }, data_sent, insights, generated_at };
   }
 
   private async customerRpc(from: string, to: string, limit?: number) {
