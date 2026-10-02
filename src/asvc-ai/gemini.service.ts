@@ -8,10 +8,15 @@ import {
 // https://ai.google.dev/gemini-api/docs/interactions-overview
 const INTERACTIONS_URL = 'https://generativelanguage.googleapis.com/v1beta/interactions';
 
+const PRIMARY_MODEL = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
+const FALLBACK_MODEL = 'gemini-2.5-flash';
+
+// Thrown only for "model is overloaded, try again" responses -- the one
+// case worth retrying against a different model rather than surfacing.
+class GeminiOverloadedError extends Error {}
+
 @Injectable()
 export class GeminiService {
-  private readonly model = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
-
   // Turns one already-sanitized report payload into a short business-analysis
   // prompt and runs it through Gemini's free-tier API. Callers must strip
   // names, addresses, and any other identifying fields before calling this --
@@ -35,6 +40,23 @@ export class GeminiService {
       JSON.stringify(payload),
     ].join('\n');
 
+    try {
+      return await this.callModel(PRIMARY_MODEL, prompt, apiKey);
+    } catch (err) {
+      if (!(err instanceof GeminiOverloadedError) || PRIMARY_MODEL === FALLBACK_MODEL) {
+        throw err;
+      }
+      // Primary model is temporarily overloaded -- fall back once rather
+      // than failing the whole request.
+      return await this.callModel(FALLBACK_MODEL, prompt, apiKey);
+    }
+  }
+
+  private async callModel(
+    model: string,
+    prompt: string,
+    apiKey: string,
+  ): Promise<string> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 30000);
     try {
@@ -44,15 +66,18 @@ export class GeminiService {
           'Content-Type': 'application/json',
           'x-goog-api-key': apiKey,
         },
-        body: JSON.stringify({ model: this.model, input: prompt }),
+        body: JSON.stringify({ model, input: prompt }),
         signal: controller.signal,
       });
 
       const body = await res.json();
       if (!res.ok) {
-        throw new InternalServerErrorException(
-          body?.error?.message || `Gemini request failed (${res.status})`,
-        );
+        const message: string =
+          body?.error?.message || `Gemini request failed (${res.status})`;
+        if (res.status === 503 || /overload|unavailable/i.test(message)) {
+          throw new GeminiOverloadedError(message);
+        }
+        throw new InternalServerErrorException(message);
       }
 
       // Response is a "steps" timeline (e.g. a thought step, then the
@@ -72,6 +97,7 @@ export class GeminiService {
       return text.trim();
     } catch (err) {
       if (
+        err instanceof GeminiOverloadedError ||
         err instanceof BadRequestException ||
         err instanceof InternalServerErrorException
       ) {
