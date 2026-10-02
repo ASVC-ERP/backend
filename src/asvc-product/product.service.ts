@@ -125,6 +125,22 @@ export class ProductService {
     return data;
   }
 
+  // Products with no sale/purchase in the last `days` (see
+  // get_dormant_products -- not date-range scoped, always relative to
+  // today). stockStatus splits the same underlying list for its two
+  // consumers: 'in' for the Sales Report panel, 'out' for the Dashboard.
+  async dormant(stockStatus?: 'in' | 'out', days = 90) {
+    const { data, error } = await this.supabase.client.rpc('get_dormant_products', {
+      p_days: days,
+    });
+    if (error) throw new InternalServerErrorException(error.message);
+
+    let rows = (data ?? []) as Array<{ stock: number | null }>;
+    if (stockStatus === 'in') rows = rows.filter((r) => Number(r.stock) > 0);
+    else if (stockStatus === 'out') rows = rows.filter((r) => !(Number(r.stock) > 0));
+    return rows;
+  }
+
   async checkItemCode(itemCode: string) {
     const code = itemCode.trim();
   

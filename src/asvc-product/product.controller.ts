@@ -68,6 +68,20 @@ export class ProductController {
     return this.service.search(q, limit);
   }
 
+  // Products with no sale/purchase in `days` (default 90), split by stock:
+  // ?stock=in for the Sales Report panel, ?stock=out for the Dashboard.
+  @Get('dormant')
+  async dormant(
+    @Query('stock') stockStatus?: string,
+    @Query('days') days?: string,
+  ) {
+    let normalizedStock: 'in' | 'out' | undefined;
+    if (stockStatus === 'in' || stockStatus === 'out') { normalizedStock = stockStatus; }
+    else { normalizedStock = undefined; }
+
+    return this.service.dormant(normalizedStock, days ? Number(days) : undefined);
+  }
+
   @Get("check-code/:itemCode")
   async checkItemCode(@Param("itemCode") itemCode: string) {
     return this.service.checkItemCode(itemCode);
