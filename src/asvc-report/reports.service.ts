@@ -3,10 +3,13 @@ import {
   InternalServerErrorException,
   BadRequestException,
   NotFoundException,
+  HttpException,
+  HttpStatus,
 } from '@nestjs/common';
 import { Workbook } from 'exceljs';
 import { SupabaseService } from '../supabase/supabase.service';
 import { GeminiService } from '../asvc-ai/gemini.service';
+import { AuditService } from '../audit/audit.service';
 
 // Column spec for a sheet: header label + a getter off each row object.
 type Col = { header: string; key: string; width?: number; money?: boolean };
@@ -102,6 +105,7 @@ export class ReportsService {
   constructor(
     private readonly supabase: SupabaseService,
     private readonly ai: GeminiService,
+    private readonly audit: AuditService,
   ) {}
 
   // The equal-length window immediately before [from, to].
@@ -248,6 +252,59 @@ export class ReportsService {
     return data;
   }
 
+  // App-side cap, independent of whatever Gemini's own (unpublished) free-tier
+  // quota happens to be: a short per-report cooldown plus a rolling 24h count
+  // across both reports. No dedicated table -- the cooldown reads
+  // report_ai_insights (already here for caching) and the daily count reads
+  // the existing audit_log, so this needs no schema change. cooldownMinutes
+  // is mirrored in AiInsightsPanel.jsx to disable the button client-side too.
+  private readonly cooldownMinutes = 5;
+  private readonly dailyLimit = 10;
+  private readonly usageAction = 'ai_insights.generate';
+
+  private async enforceInsightsLimits(
+    reportType: 'sales' | 'purchases',
+    from: string,
+    to: string,
+  ) {
+    const cached = await this.getCachedInsights(reportType, from, to);
+    if (cached?.generated_at) {
+      const elapsedMs = Date.now() - new Date(cached.generated_at).getTime();
+      const cooldownMs = this.cooldownMinutes * 60 * 1000;
+      if (elapsedMs < cooldownMs) {
+        const waitMin = Math.ceil((cooldownMs - elapsedMs) / 60000);
+        throw new HttpException(
+          `This report was just analyzed. Try again in about ${waitMin} minute${waitMin === 1 ? '' : 's'}.`,
+          HttpStatus.TOO_MANY_REQUESTS,
+        );
+      }
+    }
+
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const { count, error } = await this.supabase.client
+      .from('audit_log')
+      .select('*', { count: 'exact', head: true })
+      .eq('action', this.usageAction)
+      .gte('at', since);
+    if (error) throw new InternalServerErrorException(error.message);
+    if ((count ?? 0) >= this.dailyLimit) {
+      throw new HttpException(
+        `Daily AI Insights limit reached (${this.dailyLimit} per 24h across both reports). Try again later.`,
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+  }
+
+  private async logInsightsUsage(reportType: 'sales' | 'purchases', generatedBy?: number) {
+    await this.audit.record({
+      action: this.usageAction,
+      actorId: generatedBy ?? null,
+      targetType: 'report',
+      targetId: reportType,
+      summary: `Generated AI insights for the ${reportType} report`,
+    });
+  }
+
   private async saveInsightsCache(
     reportType: 'sales' | 'purchases',
     from: string,
@@ -283,9 +340,11 @@ export class ReportsService {
     slowDays?: number,
     generatedBy?: number,
   ) {
+    await this.enforceInsightsLimits('sales', from, to);
     const d = await this.salesDashboard(from, to, slowDays);
     const data_sent = this.sanitizeSalesForAi(d);
     const insights = await this.ai.analyzeReport('sales', data_sent);
+    await this.logInsightsUsage('sales', generatedBy);
     const generated_at = await this.saveInsightsCache(
       'sales',
       from,
@@ -303,9 +362,11 @@ export class ReportsService {
     status?: string,
     generatedBy?: number,
   ) {
+    await this.enforceInsightsLimits('purchases', from, to);
     const d = await this.purchaseDashboard(from, to, status);
     const data_sent = this.sanitizePurchasesForAi(d);
     const insights = await this.ai.analyzeReport('purchases', data_sent);
+    await this.logInsightsUsage('purchases', generatedBy);
     const generated_at = await this.saveInsightsCache(
       'purchases',
       from,
