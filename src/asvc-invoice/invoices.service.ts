@@ -36,8 +36,9 @@ export class InvoicesService {
           customer:customers!sales_invoices_cid_fkey!inner ( id, name, address ),
           user:users!sales_invoices_sales_agent_fkey!inner ( id, name, role )
         `, { count: 'exact' })
+      .order("waybill_number", { ascending: true, nullsFirst: true })
       .order("id", { ascending: false });
-  
+
     if (search && search.trim()) {
       const sanitized = search.replace(/'/g, "''");
       const isNumeric = !isNaN(Number(search));
