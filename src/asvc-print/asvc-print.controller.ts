@@ -718,7 +718,9 @@ import {
       );
       
       doc.pipe(res);
-      
+
+      const fmt = (n: number) => n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
       doc.font('Helvetica-Bold');
       doc.fontSize(12).text('Delivery Receipt', 0, 90, {
           underline: true,
@@ -745,12 +747,12 @@ import {
       ['Qty', 'Unit', 'Description', 'Price', 'Amount'].forEach((h, i) => {
           doc.text(h, Object.values(colX)[i], tableTop);
       });
-      
+
       doc.moveTo(50, tableTop + 15).lineTo(550, tableTop + 15).stroke();
-      
+
       doc.font('Helvetica');
       let y = tableTop + 25;
-      
+
       data.items
       .filter(item => (item.quantity || 0) > 0)       //safety measure for items with 0 qty on delivery receipt
       .forEach(item => {
@@ -759,12 +761,12 @@ import {
           const descHeight = doc.heightOfString(item.itemName, {
             width: 220,
           });
-      
+
           doc.text(item.quantity.toString(), colX.qty, y);
           doc.text(item.unit, colX.unit, y);
           doc.text(item.itemName, colX.desc, y, { width: 220 });
-          doc.text(item.price.toFixed(2), colX.price, y);
-          doc.text(amount.toFixed(2), colX.amount, y);
+          doc.text(fmt(item.price), colX.price, y);
+          doc.text(fmt(amount), colX.amount, y);
       
           y += Math.max(descHeight, 20) + 3;
       });
@@ -774,7 +776,7 @@ import {
       
       y += 20;
       doc.font('Helvetica-Bold').text('Total Amount Due:', colX.price, y);
-      doc.text(netTotal.toFixed(2), colX.amount, y);
+      doc.text(fmt(netTotal), colX.amount, y);
       
       y += 50;
       doc.fontSize(8).text(
