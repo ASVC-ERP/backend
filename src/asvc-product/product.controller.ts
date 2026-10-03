@@ -18,6 +18,8 @@ import { UpdateProductDto } from './dto/update-product.dto';
 import { AdjustStockDto } from './dto/adjust-stock.dto';
 import { AdjustPriceDto } from './dto/adjust-price.dto';
 import { AdjustCostDto } from './dto/adjust-cost.dto';
+import { UpdateProductStatusDto } from './dto/update-product-status.dto';
+import { BulkUpdateStatusDto } from './dto/bulk-update-status.dto';
 
 @Controller('product')
 export class ProductController {
@@ -33,24 +35,31 @@ export class ProductController {
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(100), ParseIntPipe) limit: number,
     @Query('search') search?: string,
-    @Query('stock') stockStatus?: string
+    @Query('stock') stockStatus?: string,
+    @Query('status') status?: string,
   ) {
 
     let normalizedStock: 'in' | 'out' | undefined;
-    if (stockStatus === 'in' || stockStatus === 'out') { normalizedStock = stockStatus;} 
+    if (stockStatus === 'in' || stockStatus === 'out') { normalizedStock = stockStatus;}
     else { normalizedStock = undefined; /* handles "", undefined, invalid */ }
+
+    let normalizedStatus: 'active' | 'inactive' | undefined;
+    if (status === 'active' || status === 'inactive') { normalizedStatus = status; }
+    else { normalizedStatus = undefined; /* handles "", undefined, invalid */ }
 
     return this.service.find_by_page(
       page,
       limit,
       search?.trim() || undefined,
       normalizedStock,
+      normalizedStatus,
     );
   }
 
   @Get('count')
-  async count() {
-    return this.service.count();
+  async count(@Query('status') status?: string) {
+    const normalizedStatus = status === 'active' || status === 'inactive' ? status : undefined;
+    return this.service.count(normalizedStatus);
   }
 
   @Get('search')
@@ -59,6 +68,20 @@ export class ProductController {
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
   ) {
     return this.service.search(q, limit);
+  }
+
+  // Products with no sale/purchase in `days` (default 90), split by stock:
+  // ?stock=in for the Sales Report panel, ?stock=out for the Dashboard.
+  @Get('dormant')
+  async dormant(
+    @Query('stock') stockStatus?: string,
+    @Query('days') days?: string,
+  ) {
+    let normalizedStock: 'in' | 'out' | undefined;
+    if (stockStatus === 'in' || stockStatus === 'out') { normalizedStock = stockStatus; }
+    else { normalizedStock = undefined; }
+
+    return this.service.dormant(normalizedStock, days ? Number(days) : undefined);
   }
 
   @Get("check-code/:itemCode")
@@ -90,6 +113,19 @@ export class ProductController {
     @Body() dto: AdjustStockDto,
   ) {
     return this.service.adjust_stock(id, dto);
+  }
+
+  @Patch(':id/status')
+  update_status(
+    @Param('id') id: string,
+    @Body() dto: UpdateProductStatusDto,
+  ) {
+    return this.service.update_status(+id, dto);
+  }
+
+  @Patch('bulk-status')
+  bulk_update_status(@Body() dto: BulkUpdateStatusDto) {
+    return this.service.bulk_update_status(dto);
   }
 
   @Patch(':id/price')

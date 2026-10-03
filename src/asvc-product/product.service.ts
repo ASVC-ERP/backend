@@ -5,6 +5,8 @@ import { UpdateProductDto } from './dto/update-product.dto';
 import { AdjustStockDto } from './dto/adjust-stock.dto';
 import { AdjustPriceDto } from './dto/adjust-price.dto';
 import { AdjustCostDto } from './dto/adjust-cost.dto';
+import { UpdateProductStatusDto } from './dto/update-product-status.dto';
+import { BulkUpdateStatusDto } from './dto/bulk-update-status.dto';
 
 @Injectable()
 export class ProductService {
@@ -25,10 +27,11 @@ export class ProductService {
   // READ
   // cannot do a find all function due to limit of 1000 rows only, must be seperated by pages
   async find_by_page(
-    page = 1, 
+    page = 1,
     limit = 100,
     search?: string,
-    stockStatus?: 'in' | 'out'
+    stockStatus?: 'in' | 'out',
+    status?: 'active' | 'inactive',
   ) {
     limit = Math.min(limit, 1000);
     const from = (page - 1) * limit;
@@ -52,6 +55,10 @@ export class ProductService {
       query = query.gte('stock', 1);
     } else if (stockStatus === 'out') {
       query = query.eq('stock', 0);
+    }
+
+    if (status === 'active' || status === 'inactive') {
+      query = query.eq('status', status);
     }
 
     const { data, error, count } = await query.range(from, to);
@@ -80,10 +87,16 @@ export class ProductService {
     return data;
   }
 
-  async count() {
-    const { count, error } = await this.supabase.client
+  async count(status?: 'active' | 'inactive') {
+    let query = this.supabase.client
       .from('products')
       .select('*', { count: 'exact', head: true });
+
+    if (status === 'active' || status === 'inactive') {
+      query = query.eq('status', status);
+    }
+
+    const { count, error } = await query;
 
     if (error) throw new InternalServerErrorException('Failed to fetch product count');
     return count;
@@ -117,6 +130,22 @@ export class ProductService {
 
     if (error || !data) throw new NotFoundException('Product not found');
     return data;
+  }
+
+  // Products with no sale/purchase in the last `days` (see
+  // get_dormant_products -- not date-range scoped, always relative to
+  // today). stockStatus splits the same underlying list for its two
+  // consumers: 'in' for the Sales Report panel, 'out' for the Dashboard.
+  async dormant(stockStatus?: 'in' | 'out', days = 90) {
+    const { data, error } = await this.supabase.client.rpc('get_dormant_products', {
+      p_days: days,
+    });
+    if (error) throw new InternalServerErrorException(error.message);
+
+    let rows = (data ?? []) as Array<{ stock: number | null }>;
+    if (stockStatus === 'in') rows = rows.filter((r) => Number(r.stock) > 0);
+    else if (stockStatus === 'out') rows = rows.filter((r) => !(Number(r.stock) > 0));
+    return rows;
   }
 
   async checkItemCode(itemCode: string) {
@@ -208,6 +237,32 @@ export class ProductService {
       .single();
   
     if (error || !data) throw new NotFoundException('Cannot adjust price');
+    return data;
+  }
+
+  async update_status(id: number, dto: UpdateProductStatusDto) {
+    const { data, error } = await this.supabase.client
+      .from('products')
+      .update({ status: dto.status })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error || !data) throw new NotFoundException('Cannot update product status');
+    return data;
+  }
+
+  // RPC, not .update().in(dto.ids) -- that encodes the id list into the
+  // request's query string, which starts failing once the list is long
+  // enough (a few thousand ids). This sends them in the request body
+  // instead, which has no comparable limit.
+  async bulk_update_status(dto: BulkUpdateStatusDto) {
+    const { data, error } = await this.supabase.client.rpc('bulk_update_product_status', {
+      p_ids: dto.ids,
+      p_status: dto.status,
+    });
+
+    if (error) throw new InternalServerErrorException(error.message);
     return data;
   }
 
