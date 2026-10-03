@@ -6,6 +6,7 @@ import { AdjustStockDto } from './dto/adjust-stock.dto';
 import { AdjustPriceDto } from './dto/adjust-price.dto';
 import { AdjustCostDto } from './dto/adjust-cost.dto';
 import { UpdateProductStatusDto } from './dto/update-product-status.dto';
+import { BulkUpdateStatusDto } from './dto/bulk-update-status.dto';
 
 @Injectable()
 export class ProductService {
@@ -242,6 +243,17 @@ export class ProductService {
       .single();
 
     if (error || !data) throw new NotFoundException('Cannot update product status');
+    return data;
+  }
+
+  async bulk_update_status(dto: BulkUpdateStatusDto) {
+    const { data, error } = await this.supabase.client
+      .from('products')
+      .update({ status: dto.status })
+      .in('id', dto.ids)
+      .select('id, status');
+
+    if (error) throw new InternalServerErrorException(error.message);
     return data;
   }
 

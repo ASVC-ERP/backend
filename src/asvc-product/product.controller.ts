@@ -19,6 +19,7 @@ import { AdjustStockDto } from './dto/adjust-stock.dto';
 import { AdjustPriceDto } from './dto/adjust-price.dto';
 import { AdjustCostDto } from './dto/adjust-cost.dto';
 import { UpdateProductStatusDto } from './dto/update-product-status.dto';
+import { BulkUpdateStatusDto } from './dto/bulk-update-status.dto';
 
 @Controller('product')
 export class ProductController {
@@ -119,6 +120,11 @@ export class ProductController {
     @Body() dto: UpdateProductStatusDto,
   ) {
     return this.service.update_status(+id, dto);
+  }
+
+  @Patch('bulk-status')
+  bulk_update_status(@Body() dto: BulkUpdateStatusDto) {
+    return this.service.bulk_update_status(dto);
   }
 
   @Patch(':id/price')
