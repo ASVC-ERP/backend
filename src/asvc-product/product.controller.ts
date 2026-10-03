@@ -57,8 +57,9 @@ export class ProductController {
   }
 
   @Get('count')
-  async count() {
-    return this.service.count();
+  async count(@Query('status') status?: string) {
+    const normalizedStatus = status === 'active' || status === 'inactive' ? status : undefined;
+    return this.service.count(normalizedStatus);
   }
 
   @Get('search')

@@ -87,10 +87,16 @@ export class ProductService {
     return data;
   }
 
-  async count() {
-    const { count, error } = await this.supabase.client
+  async count(status?: 'active' | 'inactive') {
+    let query = this.supabase.client
       .from('products')
       .select('*', { count: 'exact', head: true });
+
+    if (status === 'active' || status === 'inactive') {
+      query = query.eq('status', status);
+    }
+
+    const { count, error } = await query;
 
     if (error) throw new InternalServerErrorException('Failed to fetch product count');
     return count;
