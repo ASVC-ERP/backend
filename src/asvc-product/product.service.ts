@@ -246,12 +246,15 @@ export class ProductService {
     return data;
   }
 
+  // RPC, not .update().in(dto.ids) -- that encodes the id list into the
+  // request's query string, which starts failing once the list is long
+  // enough (a few thousand ids). This sends them in the request body
+  // instead, which has no comparable limit.
   async bulk_update_status(dto: BulkUpdateStatusDto) {
-    const { data, error } = await this.supabase.client
-      .from('products')
-      .update({ status: dto.status })
-      .in('id', dto.ids)
-      .select('id, status');
+    const { data, error } = await this.supabase.client.rpc('bulk_update_product_status', {
+      p_ids: dto.ids,
+      p_status: dto.status,
+    });
 
     if (error) throw new InternalServerErrorException(error.message);
     return data;
