@@ -102,14 +102,14 @@ export class ProductService {
     return count;
   }
 
-  async search(query: string, limit = 20) {
+  async search(query: string, limit = 20, status?: 'active' | 'inactive') {
     const q = query?.trim();
-  
+
     if (!q) {
       return [];
     }
-  
-    const { data, error } = await this.supabase.client
+
+    let dbQuery = this.supabase.client
       .from('products')
       .select(`
           *
@@ -117,7 +117,13 @@ export class ProductService {
       .or(`item_name.ilike.*${q}*,item_code.ilike.*${q}*`)
       .order('item_name', { ascending: true })
       .limit(limit);
-    
+
+    if (status === 'active' || status === 'inactive') {
+      dbQuery = dbQuery.eq('status', status);
+    }
+
+    const { data, error } = await dbQuery;
+
     if (error) throw new NotFoundException('Product not found');
     return data;
   }
