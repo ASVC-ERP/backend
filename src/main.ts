@@ -4,6 +4,7 @@ config();
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 import { Console } from 'console';
@@ -59,7 +60,16 @@ async function bootstrap() {
     new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
   );
 
-  const db = process.env.DB_NAME!; 
+  const swaggerConfig = new DocumentBuilder()
+    .setTitle('IMS API')
+    .setDescription('Inventory Management System backend API')
+    .setVersion('1.0')
+    .addBearerAuth()
+    .build();
+  const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig);
+  SwaggerModule.setup('api/docs', app, swaggerDocument);
+
+  const db = process.env.DB_NAME!;
   console.log("=========================================================================")
   console.log("=== DATABASE: ", db);
   console.log("=========================================================================")

@@ -66,8 +66,10 @@ export class ProductController {
   async search(
     @Query('q') q: string,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
+    @Query('status') status?: string,
   ) {
-    return this.service.search(q, limit);
+    const normalizedStatus = status === 'active' || status === 'inactive' ? status : undefined;
+    return this.service.search(q, limit, normalizedStatus);
   }
 
   // Products with no sale/purchase in `days` (default 90), split by stock:
